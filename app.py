@@ -20,7 +20,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização no padrão Dark + Verde Neon
 st.markdown("""
     <style>
     .stApp {
@@ -99,7 +98,24 @@ def inicializar_banco():
         )
     """)
     conn.commit()
-    
+
+    # Migração automática de colunas ausentes
+    cursor.execute("PRAGMA table_info(produtos)")
+    cols_produtos = [col[1] for col in cursor.fetchall()]
+    if "meses_garantia" not in cols_produtos:
+        cursor.execute("ALTER TABLE produtos ADD COLUMN meses_garantia INTEGER DEFAULT 12")
+
+    cursor.execute("PRAGMA table_info(vendas)")
+    cols_vendas = [col[1] for col in cursor.fetchall()]
+    if "parcelas" not in cols_vendas:
+        cursor.execute("ALTER TABLE vendas ADD COLUMN parcelas TEXT DEFAULT '1x'")
+    if "amperagem" not in cols_vendas:
+        cursor.execute("ALTER TABLE vendas ADD COLUMN amperagem INTEGER DEFAULT 0")
+    if "meses_garantia" not in cols_vendas:
+        cursor.execute("ALTER TABLE vendas ADD COLUMN meses_garantia INTEGER DEFAULT 12")
+
+    conn.commit()
+
     cursor.execute("SELECT COUNT(*) FROM produtos")
     if cursor.fetchone()[0] == 0:
         catalogo_exato = [
@@ -235,8 +251,8 @@ if "logado" not in st.session_state:
     st.session_state["perfil"] = None
 
 if not st.session_state["logado"]:
-    if os.path.exists("l"):
-        st.image("l", width=320)
+    if os.path.exists("lg"):
+        st.image("logg", width=320)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
