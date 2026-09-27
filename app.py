@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 import os
 from io import BytesIO
 
-# Importação para geração do PDF
 try:
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -16,13 +15,12 @@ except ImportError:
     REPORTLAB_DISPONIVEL = False
 
 st.set_page_config(
-    page_title="Power Baterias+",
-    page_icon="⚡",
+    page_title="Power Baterias",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Estilização no padrão Dark + Verde Neon da Loja
+# Estilização no padrão Dark + Verde Neon
 st.markdown("""
     <style>
     .stApp {
@@ -67,7 +65,6 @@ def inicializar_banco():
     conn = conectar()
     cursor = conn.cursor()
     
-    # Recriar tabela produtos para garantir limpeza e ordenação
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,7 +100,6 @@ def inicializar_banco():
     """)
     conn.commit()
     
-    # Popula catálogo exato enviado caso o banco esteja limpo
     cursor.execute("SELECT COUNT(*) FROM produtos")
     if cursor.fetchone()[0] == 0:
         catalogo_exato = [
@@ -180,8 +176,8 @@ def gerador_pdf_nota(dados):
     sub_style = ParagraphStyle('SubStyle', parent=styles['Normal'], fontSize=10, textColor=colors.black, alignment=1, spaceAfter=15)
     body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14)
     
-    story.append(Paragraph("<b>POWER BATERIAS+</b>", title_style))
-    story.append(Paragraph("DISK BATERIAS: (99) 9519-1090<br/>COMPROVANTE DE VENDA E TERMO DE GARANTIA", sub_style))
+    story.append(Paragraph("<b>POWER BATERIAS</b>", title_style))
+    story.append(Paragraph("DISK BATERIAS: (61) 99519-1090<br/>COMPROVANTE DE VENDA E TERMO DE GARANTIA", sub_style))
     story.append(Spacer(1, 10))
     
     table_info = [
@@ -219,10 +215,9 @@ def gerador_pdf_nota(dados):
     story.append(Spacer(1, 20))
     
     termos = f"""
-    <b>TERMOS DE GARANTIA E CONDIÇÕES:</b><br/>
+    <b>TERMOS DE GARANTIA:</b><br/>
     1. A garantia deste produto é de <b>{dados['meses_garantia']} meses</b> a contar da data desta venda.<br/>
     2. A garantia cobre defeitos de fabricação. Danos por mau uso, sobrecarga ou caixa quebrada anulam a garantia.<br/>
-    3. <b>Observação:</b> Venda realizada com valor à base de troca de carcaça inservível.<br/>
     """
     story.append(Paragraph(termos, body_style))
     story.append(Spacer(1, 30))
@@ -240,8 +235,8 @@ if "logado" not in st.session_state:
     st.session_state["perfil"] = None
 
 if not st.session_state["logado"]:
-    if os.path.exists("lo.png"):
-        st.image("lo.png", width=320)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=320)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
@@ -250,7 +245,7 @@ if not st.session_state["logado"]:
     
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.subheader("🔑 Acesso ao Sistema")
+        st.subheader("Acesso ao Sistema")
         usuario = st.text_input("Usuário")
         senha = st.text_input("Senha", type="password")
         
@@ -271,26 +266,25 @@ if not st.session_state["logado"]:
 if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", use_container_width=True)
 else:
-    st.sidebar.markdown("##  POWER BATERIAS")
+    st.sidebar.markdown("## POWER BATERIAS")
 
-st.sidebar.caption(" DISK BATERIAS: (61) 99519-1090")
+st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
 st.sidebar.caption(f"Perfil: **{st.session_state['perfil']}**")
 st.sidebar.write("---")
 
 if st.session_state["perfil"] == "ADM":
-    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", " Estoque Organizado", " Editar Baterias", " Consultar Garantia", " Histórico", " Painel ADM"])
+    menu = st.sidebar.radio("Navegação", ["Nova Venda", "Estoque Organizado", "Editar Baterias", "Consultar Garantia", "Histórico", "Painel ADM"])
 else:
-    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", " Estoque Organizado", " Consultar Garantia", " Histórico"])
+    menu = st.sidebar.radio("Navegação", ["Nova Venda", "Estoque Organizado", "Consultar Garantia", "Histórico"])
 
 st.sidebar.write("---")
-if st.sidebar.button(" Sair"):
+if st.sidebar.button("Sair"):
     st.session_state["logado"] = False
     st.rerun()
 
-
 # --- ABA 1: NOVA VENDA ---
-if menu == "🛒 Nova Venda":
-    st.header("🛒 Lançamento de Venda")
+if menu == "Nova Venda":
+    st.header("Lançamento de Venda")
     
     conn = conectar()
     df_prods = pd.read_sql_query("SELECT id, categoria, nome, amperagem, preco, quantidade, meses_garantia FROM produtos WHERE quantidade > 0", conn)
@@ -299,7 +293,6 @@ if menu == "🛒 Nova Venda":
     if df_prods.empty:
         st.warning("Nenhuma bateria disponível no estoque!")
     else:
-        # Seleção simplificada
         opcoes_prods = [f"ID {row['id']} | {row['nome']} - R$ {row['preco']:.2f} (Estoque: {row['quantidade']})" for _, row in df_prods.iterrows()]
         prod_sel_str = st.selectbox("Selecione a Bateria", opcoes_prods)
         id_prod = int(prod_sel_str.split(" ")[1])
@@ -314,11 +307,11 @@ if menu == "🛒 Nova Venda":
             qtd = st.number_input("Quantidade", min_value=1, value=1)
             preco_base = float(dados_p['preco'])
             
-            st.info(f" **Preço Tabela (Unitário):** R$ {preco_base:.2f}")
+            st.info(f"Preço Tabela (Unitário): R$ {preco_base:.2f}")
             desconto = st.number_input("Desconto Total em R$ (Opcional)", min_value=0.0, value=0.0, step=5.0)
             
             valor_final = (preco_base * qtd) - desconto
-            st.success(f" **Valor Total Final:** R$ {valor_final:.2f}")
+            st.success(f"Valor Total Final: R$ {valor_final:.2f}")
             
             vendedor = st.text_input("Nome do Vendedor")
             pagamento = st.selectbox("Forma de Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
@@ -331,7 +324,7 @@ if menu == "🛒 Nova Venda":
             placa = st.text_input("Placa do Veículo (Opcional)")
             serie = st.text_input("Nº de Série da Bateria (Opcional)")
 
-        if st.button("✅ Concluir Venda e Gerar Nota PDF", use_container_width=True):
+        if st.button("Concluir Venda e Gerar Nota PDF", use_container_width=True):
             if qtd > dados_p['quantidade']:
                 st.error(f"Estoque insuficiente! Restam apenas {dados_p['quantidade']} unidades.")
             else:
@@ -373,15 +366,15 @@ if menu == "🛒 Nova Venda":
                     }
                     pdf_bytes = gerador_pdf_nota(dados_venda_pdf)
                     st.download_button(
-                        label="📄 Baixar Comprovante/Nota de Garantia em PDF",
+                        label="Baixar Comprovante/Nota de Garantia em PDF",
                         data=pdf_bytes,
                         file_name=f"nota_venda_{id_venda}_power_baterias.pdf",
                         mime="application/pdf"
                     )
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
-elif menu == " Estoque Organizado":
-    st.header(" Estoque Organizado por Categoria")
+elif menu == "Estoque Organizado":
+    st.header("Estoque Organizado por Categoria")
     
     conn = conectar()
     df_estoque = pd.read_sql_query("SELECT id, categoria, nome, amperagem, marca, preco, quantidade, meses_garantia FROM produtos", conn)
@@ -390,14 +383,14 @@ elif menu == " Estoque Organizado":
     categorias = df_estoque['categoria'].unique()
     
     for cat in categorias:
-        with st.expander(f" Categorias: {cat}", expanded=True):
+        with st.expander(f"Categoria: {cat}", expanded=True):
             df_sub = df_estoque[df_estoque['categoria'] == cat][['id', 'nome', 'marca', 'amperagem', 'preco', 'quantidade', 'meses_garantia']]
-            df_sub.columns = ['ID', 'Modelo', 'Marca', 'Amp (Ah)', 'Preço Troca (R$)', 'Qtd Est.', 'Garantia (Meses)']
+            df_sub.columns = ['ID', 'Modelo', 'Marca', 'Amp (Ah)', 'Preço (R$)', 'Qtd Est.', 'Garantia (Meses)']
             st.dataframe(df_sub, use_container_width=True, hide_index=True)
 
 # --- ABA 3: EDITAR BATERIAS ---
-elif menu == " Editar Baterias":
-    st.header(" Alterar ou Excluir Baterias")
+elif menu == "Editar Baterias":
+    st.header("Alterar ou Excluir Baterias")
     
     conn = conectar()
     df_prods = pd.read_sql_query("SELECT * FROM produtos ORDER BY id ASC", conn)
@@ -426,7 +419,7 @@ elif menu == " Editar Baterias":
             with col3:
                 e_garantia = st.number_input("Garantia (Meses)", min_value=1, value=int(item['meses_garantia']))
             
-            btn_salvar = st.form_submit_button("💾 Salvar Alterações")
+            btn_salvar = st.form_submit_button("Salvar Alterações")
             
             if btn_salvar:
                 conn = conectar()
@@ -441,7 +434,7 @@ elif menu == " Editar Baterias":
                 st.success("Bateria atualizada com sucesso!")
                 st.rerun()
 
-        if st.button("❌ Excluir Bateria do Sistema"):
+        if st.button("Excluir Bateria do Sistema"):
             conn = conectar()
             cursor = conn.cursor()
             cursor.execute("DELETE FROM produtos WHERE id = ?", (id_sel,))
@@ -451,9 +444,9 @@ elif menu == " Editar Baterias":
             st.rerun()
 
 # --- ABA 4: GARANTIA ---
-elif menu == " Consultar Garantia":
-    st.header(" Consulta de Garantias")
-    termo = st.text_input("🔍 Digite Nome do Cliente, Placa do Veículo ou Nº de Série")
+elif menu == "Consultar Garantia":
+    st.header("Consulta de Garantias")
+    termo = st.text_input("Digite Nome do Cliente, Placa do Veículo ou Nº de Série")
     
     if termo:
         conn = conectar()
@@ -480,7 +473,7 @@ elif menu == " Consultar Garantia":
                 dt_venc = dt_v + timedelta(days=m_garantia * 30)
                 restantes = (dt_venc - hoje).days
 
-                status = "✅ NA GARANTIA" if restantes > 0 else "❌ VENCIDA"
+                status = "NA GARANTIA" if restantes > 0 else "VENCIDA"
                 tempo_str = f"{restantes} dias restantes" if restantes > 0 else f"Vencida há {abs(restantes)} dias"
 
                 resultados.append({
@@ -497,8 +490,8 @@ elif menu == " Consultar Garantia":
             st.dataframe(pd.DataFrame(resultados), use_container_width=True)
 
 # --- ABA 5: HISTÓRICO ---
-elif menu == " Histórico":
-    st.header(" Histórico Geral de Vendas")
+elif menu == "Histórico":
+    st.header("Histórico Geral de Vendas")
     conn = conectar()
     df_hist = pd.read_sql_query("""
         SELECT id AS 'ID', data_hora AS 'Data/Hora', vendedor AS 'Vendedor', produto_nome AS 'Produto', 
@@ -511,8 +504,8 @@ elif menu == " Histórico":
     st.dataframe(df_hist, use_container_width=True)
 
 # --- ABA 6: PAINEL ADM ---
-elif menu == "📊 Painel ADM":
-    st.header("📊 Painel Financeiro e Cadastro")
+elif menu == "Painel ADM":
+    st.header("Painel Financeiro e Cadastro")
     
     conn = conectar()
     totais = pd.read_sql_query("SELECT SUM(valor_total) as faturado, SUM(quantidade) as un_vendidas FROM vendas", conn)
@@ -523,17 +516,17 @@ elif menu == "📊 Painel ADM":
     qtd_un = totais['un_vendidas'].iloc[0] or 0
 
     col1, col2 = st.columns(2)
-    col1.metric(" Faturamento Total", f"R$ {fat:,.2f}")
-    col2.metric(" Baterias Vendidas", f"{qtd_un} Unidades")
+    col1.metric("Faturamento Total", f"R$ {fat:,.2f}")
+    col2.metric("Baterias Vendidas", f"{qtd_un} Unidades")
 
     st.write("---")
-    st.subheader("➕ Cadastrar Nova Bateria")
+    st.subheader("Cadastrar Nova Bateria")
     with st.form("cad_manual"):
         f_cat = st.text_input("Categoria/Família (ex: 60 Ah Padrão)", value="60 Ah Padrão")
         f_nome = st.text_input("Nome do Modelo (ex: Heliar 60Ah)")
         f_amp = st.number_input("Amperagem (Ah)", min_value=1, value=60)
         f_marca = st.text_input("Marca", value="Heliar")
-        f_preco = st.number_input("Preço a Base de Troca (R$)", min_value=0.0, value=400.0)
+        f_preco = st.number_input("Preço (R$)", min_value=0.0, value=400.0)
         f_qtd = st.number_input("Quantidade em Estoque", min_value=1, value=10)
         f_garantia = st.number_input("Garantia (Meses)", min_value=1, value=24)
         
