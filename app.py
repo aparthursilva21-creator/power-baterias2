@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import os
 from io import BytesIO
 
+# Tenta importar o ReportLab para geração de PDF
 try:
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -64,7 +65,6 @@ def inicializar_banco():
     conn = conectar()
     cursor = conn.cursor()
     
-    # Recria produtos se houver incoerência de esquema
     try:
         cursor.execute("SELECT meses_garantia, veiculo FROM produtos LIMIT 1")
     except sqlite3.OperationalError:
@@ -84,7 +84,6 @@ def inicializar_banco():
         )
     """)
     
-    # Força recriação da tabela vendas se ela não tiver exatamente as 17 colunas esperadas
     cursor.execute("PRAGMA table_info(vendas)")
     colunas_vendas = cursor.fetchall()
     if len(colunas_vendas) != 17:
@@ -154,6 +153,9 @@ def inicializar_banco():
     conn.close()
 
 def gerador_pdf_nota(dados):
+    if not REPORTLAB_DISPONIVEL:
+        return None
+
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     story = []
@@ -292,16 +294,19 @@ def modal_gerar_pdf(dados_venda):
     st.write(f"**Cliente:** {dados_venda['cliente_nome']}")
     st.write(f"**Bateria:** {dados_venda['produto_nome']}")
     st.write(f"**Valor Total:** R$ {dados_venda['valor_total']:.2f}")
-    st.write("Deseja gerar e baixar a **Nota Fiscal / Comprovante** agora?")
     
-    pdf_bytes = gerador_pdf_nota(dados_venda)
-    st.download_button(
-        label="📄 Baixar Nota Fiscal (PDF)",
-        data=pdf_bytes,
-        file_name=f"nota_fiscal_{dados_venda['id']}_power_baterias.pdf",
-        mime="application/pdf",
-        use_container_width=True
-    )
+    if REPORTLAB_DISPONIVEL:
+        st.write("Deseja gerar e baixar a **Nota Fiscal / Comprovante** agora?")
+        pdf_bytes = gerador_pdf_nota(dados_venda)
+        st.download_button(
+            label="📄 Baixar Nota Fiscal (PDF)",
+            data=pdf_bytes,
+            file_name=f"nota_fiscal_{dados_venda['id']}_power_baterias.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    else:
+        st.warning("⚠️ Biblioteca 'reportlab' não encontrada no servidor! Adicione 'reportlab' ao seu arquivo requirements.txt para gerar o PDF.")
 
 # --- MENU LATERAL ---
 if os.path.exists("logo.png"):
@@ -595,14 +600,17 @@ elif menu == "Histórico":
                     'meses_garantia': row['meses_garantia']
                 }
                 
-                pdf_bytes = gerador_pdf_nota(dados_v)
-                col_btn.download_button(
-                    label="📄 Nota Fiscal PDF",
-                    data=pdf_bytes,
-                    file_name=f"nota_fiscal_{row['id']}_power_baterias.pdf",
-                    mime="application/pdf",
-                    key=f"btn_pdf_{row['id']}"
-                )
+                if REPORTLAB_DISPONIVEL:
+                    pdf_bytes = gerador_pdf_nota(dados_v)
+                    col_btn.download_button(
+                        label="📄 Nota Fiscal PDF",
+                        data=pdf_bytes,
+                        file_name=f"nota_fiscal_{row['id']}_power_baterias.pdf",
+                        mime="application/pdf",
+                        key=f"btn_pdf_{row['id']}"
+                    )
+                else:
+                    col_btn.caption("⚠️ Requer ReportLab")
                 st.write("---")
 
 # --- ABA 6: PAINEL ADM ---
