@@ -54,16 +54,6 @@ st.markdown("""
         background-color: #16191e !important;
         border-right: 1px solid #28a745;
     }
-    .banner-troca {
-        background-color: #28a745;
-        color: #000000;
-        padding: 8px 15px;
-        border-radius: 6px;
-        text-align: center;
-        font-weight: bold;
-        margin-bottom: 20px;
-        font-size: 1.1rem;
-    }
     </style>
 """, unsafe_allow_html=True)
 
