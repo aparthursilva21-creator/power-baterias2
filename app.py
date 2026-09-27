@@ -199,7 +199,7 @@ if not st.session_state["logado"]:
     else:
         st.markdown("<h1 style='text-align: center;'>⚡ HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
-    st.markdown("<p style='text-align: center; color: #39ff14;'>DISK BATERIAS: (99) 9519-1090</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #39ff14;'>DISK BATERIAS: (61) 99519-1090</p>", unsafe_allow_html=True)
     st.write("---")
     
     col1, col2, col3 = st.columns([1, 1.2, 1])
