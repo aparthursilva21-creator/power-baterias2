@@ -5,51 +5,60 @@ from datetime import datetime, timedelta
 
 # Configuração da página e tema
 st.set_page_config(
-    page_title="Power Baterias - Gestão Oficial",
-    page_icon="⚡",
+    page_title="Power Baterias+",
+    page_icon="🔋",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Estilização Personalizada (CSS da Power Baterias)
+# Estilização no padrão visual da fachada da Power Baterias (Verde Heliar + Clean)
 st.markdown("""
     <style>
-    /* Estilo do fundo e cores principais */
+    /* Estilo Geral */
     .stApp {
-        background-color: #0e1117;
-        color: #ffffff;
+        background-color: #f8f9fa;
+        color: #1e1e1e;
     }
     
-    /* Botões da marca */
+    /* Topo e Cabeçalhos Verde Heliar */
+    h1, h2, h3 {
+        color: #1b8036 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Botões Verde Heliar */
     .stButton>button {
-        background-color: #ffcc00 !important;
-        color: #000000 !important;
+        background-color: #1b8036 !important;
+        color: #ffffff !important;
         font-weight: bold !important;
-        border-radius: 8px !important;
+        border-radius: 6px !important;
         border: none !important;
-        padding: 10px 24px !important;
+        padding: 10px 20px !important;
+        transition: 0.3s;
     }
     .stButton>button:hover {
-        background-color: #e6b800 !important;
-        color: #000000 !important;
+        background-color: #146329 !important;
+        color: #ffffff !important;
     }
     
-    /* Destaques e Caixas do Dashboard */
+    /* Indicadores de Métricas */
     [data-testid="stMetricValue"] {
-        color: #ffcc00 !important;
-        font-size: 2rem !important;
+        color: #1b8036 !important;
+        font-size: 2.2rem !important;
         font-weight: bold !important;
     }
     
-    /* Menus laterais */
+    /* Menu Lateral */
     section[data-testid="stSidebar"] {
-        background-color: #161b22 !important;
-        border-right: 1px solid #30363d;
+        background-color: #1e2229 !important;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #ffffff !important;
     }
     
-    /* Títulos */
-    h1, h2, h3 {
-        color: #ffcc00 !important;
+    /* Caixas de Alerta e Expander */
+    .stAlert {
+        border-radius: 8px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -97,22 +106,23 @@ def inicializar_banco():
 
 inicializar_banco()
 
-# --- SISTEMA DE LOGIN ---
+# --- LOGIN ---
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
     st.session_state["perfil"] = None
 
 if not st.session_state["logado"]:
-    st.markdown("<h1 style='text-align: center;'>⚡ POWER BATERIAS</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>Portal de Gestão & Vendas</h3>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; font-size: 2.8rem;'>⚡ POWER BATERIAS+</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #555;'>DISK BATERIAS: (99) 9519-1090</p>", unsafe_allow_html=True)
     st.write("---")
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
+        st.subheader("🔑 Acesso ao Sistema")
         usuario = st.text_input("Usuário")
         senha = st.text_input("Senha", type="password")
         
-        if st.button("🔐 Acessar o Sistema", use_container_width=True):
+        if st.button("Entrar", use_container_width=True):
             if senha == SENHA_ADM:
                 st.session_state["logado"] = True
                 st.session_state["perfil"] = "ADM"
@@ -125,18 +135,19 @@ if not st.session_state["logado"]:
                 st.error("Senha ou usuário incorretos!")
     st.stop()
 
-# --- MENU LATERAL PERSONALIZADO ---
-st.sidebar.markdown("## ⚡ Power Baterias")
-st.sidebar.caption(f"Operador: **{st.session_state['perfil']}**")
+# --- MENU LATERAL ---
+st.sidebar.markdown("## ⚡ POWER BATERIAS+")
+st.sidebar.caption("📞 DISK BATERIAS: (99) 9519-1090")
+st.sidebar.caption(f"Perfil: **{st.session_state['perfil']}**")
 st.sidebar.write("---")
 
 if st.session_state["perfil"] == "ADM":
-    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", "📦 Estoque", "🛡️ Consultar Garantia", "📄 Histórico", "📊 Relatório ADM"])
+    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", "📦 Estoque", "🛡️ Consultar Garantia", "📄 Histórico", "📊 Relatório & Carga ADM"])
 else:
     menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", "📦 Estoque", "🛡️ Consultar Garantia", "📄 Histórico"])
 
 st.sidebar.write("---")
-if st.sidebar.button("🚪 Sair do Sistema"):
+if st.sidebar.button("🚪 Sair"):
     st.session_state["logado"] = False
     st.rerun()
 
@@ -149,7 +160,7 @@ if menu == "🛒 Nova Venda":
     conn.close()
 
     if df_prods.empty:
-        st.warning("Nenhum produto cadastrado no estoque!")
+        st.warning("Nenhuma bateria cadastrada no estoque! Vá na aba ADM para cadastrar ou carregar a lista de baterias.")
     else:
         lista_prods = [f"ID {row['id']} - {row['nome']} ({row['amperagem']}Ah) - R$ {row['preco']:.2f} | Est: {row['quantidade']}" for _, row in df_prods.iterrows()]
         prod_selecionado = st.selectbox("Selecione a Bateria", lista_prods)
@@ -158,17 +169,17 @@ if menu == "🛒 Nova Venda":
         col1, col2 = st.columns(2)
         with col1:
             qtd = st.number_input("Quantidade", min_value=1, value=1)
-            vendedor = st.text_input("Nome do Vendedor")
+            vendedor = st.text_input("Vendedor")
             pagamento = st.selectbox("Forma de Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
             parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
         
         with col2:
-            cliente = st.text_input("Nome do Cliente (Para Garantia)")
+            cliente = st.text_input("Nome do Cliente")
             cpf = st.text_input("CPF/CNPJ (Opcional)")
             placa = st.text_input("Placa do Veículo (Opcional)")
             serie = st.text_input("Nº de Série da Bateria (Opcional)")
 
-        if st.button("✅ Finalizar Venda e Emitir Garantia", use_container_width=True):
+        if st.button("✅ Finalizar Venda", use_container_width=True):
             dados_p = df_prods[df_prods['id'] == id_prod].iloc[0]
             
             if qtd > dados_p['quantidade']:
@@ -192,7 +203,7 @@ if menu == "🛒 Nova Venda":
 
 # --- ABA 2: ESTOQUE ---
 elif menu == "📦 Estoque":
-    st.header("📦 Estoque de Baterias")
+    st.header("📦 Estoque Atual")
     conn = conectar()
     df_estoque = pd.read_sql_query("SELECT id AS 'ID', nome AS 'Modelo/Nome', amperagem AS 'Amp (Ah)', marca AS 'Marca', preco AS 'Preço (R$)', quantidade AS 'Qtd Est.', meses_garantia AS 'Garantia (Meses)' FROM produtos", conn)
     conn.close()
@@ -201,8 +212,8 @@ elif menu == "📦 Estoque":
 
 # --- ABA 3: GARANTIA ---
 elif menu == "🛡️ Consultar Garantia":
-    st.header("🛡️ Consulta de Garantias e Clientes")
-    termo = st.text_input("🔍 Digite o Nome do Cliente, Placa do Carro ou Nº de Série")
+    st.header("🛡️ Consulta de Garantias")
+    termo = st.text_input("🔍 Digite o Nome do Cliente, Placa do Veículo ou Nº de Série")
     
     if termo:
         conn = conectar()
@@ -214,7 +225,7 @@ elif menu == "🛡️ Consultar Garantia":
         conn.close()
 
         if df_garantia.empty:
-            st.warning("Nenhum registro encontrado para a busca realizada.")
+            st.warning("Nenhum registro encontrado.")
         else:
             hoje = datetime.now()
             resultados = []
@@ -239,8 +250,8 @@ elif menu == "🛡️ Consultar Garantia":
                     "Produto": f"{r['produto_nome']} ({r['amperagem']}Ah)",
                     "Placa": r['veiculo_placa'],
                     "Nº Série": r['numero_serie'],
-                    "Status Garantia": status,
-                    "Prazo Restante": tempo_str
+                    "Status": status,
+                    "Prazo Garantia": tempo_str
                 })
 
             st.dataframe(pd.DataFrame(resultados), use_container_width=True)
@@ -259,9 +270,9 @@ elif menu == "📄 Histórico":
     
     st.dataframe(df_hist, use_container_width=True)
 
-# --- ABA 5: RELATÓRIO ADM ---
-elif menu == "📊 Relatório ADM":
-    st.header("📊 Painel de Controle - Power Baterias")
+# --- ABA 5: RELATÓRIO E CARGA EM MASSA ADM ---
+elif menu == "📊 Relatório & Carga ADM":
+    st.header("📊 Painel ADM & Gerenciamento de Estoque")
     
     conn = conectar()
     totais = pd.read_sql_query("SELECT SUM(valor_total) as faturado, SUM(quantidade) as un_vendidas FROM vendas", conn)
@@ -273,30 +284,77 @@ elif menu == "📊 Relatório ADM":
 
     col1, col2 = st.columns(2)
     col1.metric("💰 Faturamento Total", f"R$ {fat:,.2f}")
-    col2.metric("🔋 Baterias Vendidas", f"{qtd_un} Unidades")
+    col2.metric("📦 Baterias Vendidas", f"{qtd_un} Unidades")
 
     st.write("---")
-    st.subheader("Gerenciamento do Estoque")
-    with st.expander("➕ Cadastrar Nova Bateria no Estoque"):
-        with st.form("cad_prod"):
-            f_nome = st.text_input("Nome do Modelo (ex: Moura M60AD)")
+    st.subheader("📥 Adicionar Baterias em Massa")
+
+    tab1, tab2, tab3 = st.tabs(["🚀 Carga Automática Padrão", "📁 Importar Planilha (Excel/CSV)", "➕ Cadastrar Unidade"])
+
+    with tab1:
+        st.write("Clique no botão abaixo para cadastrar automaticamente os modelos mais vendidos (Heliar, Moura, Cral, etc.):")
+        if st.button("⚡ Inserir Modelos Padrão no Estoque"):
+            modelos_padrao = [
+                ("Heliar HG60DD", 60, "Heliar", 450.00, 15, 24),
+                ("Heliar HG50ED", 50, "Heliar", 380.00, 10, 24),
+                ("Heliar HG70ND", 70, "Heliar", 520.00, 8, 24),
+                ("Moura M60AD", 60, "Moura", 440.00, 15, 18),
+                ("Moura M50ED", 50, "Moura", 370.00, 10, 18),
+                ("Cral CL60DD", 60, "Cral", 320.00, 20, 15),
+                ("Bateria Moto 6Ah", 6, "Heliar", 180.00, 12, 12),
+            ]
+            conn = conectar()
+            cursor = conn.cursor()
+            cursor.executemany("""
+                INSERT INTO produtos (nome, amperagem, marca, preco, quantidade, meses_garantia)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, modelos_padrao)
+            conn.commit()
+            conn.close()
+            st.success("Baterias inseridas com sucesso!")
+            st.rerun()
+
+    with tab2:
+        st.write("Envie um arquivo Excel (.xlsx) ou CSV com as colunas: `nome`, `amperagem`, `marca`, `preco`, `quantidade`, `meses_garantia`")
+        arquivo = st.file_uploader("Escolha a planilha", type=["csv", "xlsx"])
+        if arquivo is not None:
+            try:
+                if arquivo.name.endswith(".csv"):
+                    df_upload = pd.read_csv(arquivo)
+                else:
+                    df_upload = pd.read_excel(arquivo)
+                
+                st.dataframe(df_upload.head(), use_container_width=True)
+                
+                if st.button("Confirmar Importação da Planilha"):
+                    conn = conectar()
+                    df_upload.to_sql("produtos", conn, if_exists="append", index=False)
+                    conn.close()
+                    st.success("Todas as baterias da planilha foram importadas com sucesso!")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao processar planilha: {e}")
+
+    with tab3:
+        with st.form("cad_manual"):
+            f_nome = st.text_input("Modelo/Nome (ex: Heliar 60Ah)")
             f_amp = st.number_input("Amperagem (Ah)", min_value=1, value=60)
-            f_marca = st.text_input("Marca")
-            f_preco = st.number_input("Preço de Venda (R$)", min_value=0.0, value=350.0)
-            f_qtd = st.number_input("Estoque Inicial", min_value=0, value=10)
-            f_garantia = st.number_input("Garantia (Meses)", min_value=1, value=18)
-            
-            if st.form_submit_button("Salvar no Banco de Dados"):
+            f_marca = st.text_input("Marca", value="Heliar")
+            f_preco = st.number_input("Preço (R$)", min_value=0.0, value=400.0)
+            f_qtd = st.number_input("Quantidade", min_value=1, value=10)
+            f_garantia = st.number_input("Garantia (Meses)", min_value=1, value=24)
+            if st.form_submit_button("Salvar Bateria"):
                 conn = conectar()
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO produtos (nome, amperagem, marca, preco, quantidade, meses_garantia) 
+                    INSERT INTO produtos (nome, amperagem, marca, preco, quantidade, meses_garantia)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (f_nome, f_amp, f_marca, f_preco, f_qtd, f_garantia))
                 conn.commit()
                 conn.close()
-                st.success("Nova bateria salva com sucesso!")
+                st.success("Bateria cadastrada!")
                 st.rerun()
 
-    st.subheader("Relatório Completo")
+    st.write("---")
+    st.subheader("Histórico Completo de Vendas")
     st.dataframe(df_vendas, use_container_width=True)
