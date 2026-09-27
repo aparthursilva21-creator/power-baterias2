@@ -271,23 +271,22 @@ if not st.session_state["logado"]:
 if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", use_container_width=True)
 else:
-    st.sidebar.markdown("## ⚡ POWER BATERIAS")
+    st.sidebar.markdown("##  POWER BATERIAS")
 
-st.sidebar.caption("📞 DISK BATERIAS: (99) 9519-1090")
+st.sidebar.caption(" DISK BATERIAS: (99) 9519-1090")
 st.sidebar.caption(f"Perfil: **{st.session_state['perfil']}**")
 st.sidebar.write("---")
 
 if st.session_state["perfil"] == "ADM":
-    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", "📦 Estoque Organizado", "✏️ Editar Baterias", "🛡️ Consultar Garantia", "📄 Histórico", "📊 Painel ADM"])
+    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", " Estoque Organizado", " Editar Baterias", " Consultar Garantia", " Histórico", " Painel ADM"])
 else:
-    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", "📦 Estoque Organizado", "🛡️ Consultar Garantia", "📄 Histórico"])
+    menu = st.sidebar.radio("Navegação", ["🛒 Nova Venda", " Estoque Organizado", " Consultar Garantia", " Histórico"])
 
 st.sidebar.write("---")
-if st.sidebar.button("🚪 Sair"):
+if st.sidebar.button(" Sair"):
     st.session_state["logado"] = False
     st.rerun()
 
-st.markdown('<div class="banner-troca">🔄 VALORES A BASE DE TROCA 🔄</div>', unsafe_allow_html=True)
 
 # --- ABA 1: NOVA VENDA ---
 if menu == "🛒 Nova Venda":
@@ -315,11 +314,11 @@ if menu == "🛒 Nova Venda":
             qtd = st.number_input("Quantidade", min_value=1, value=1)
             preco_base = float(dados_p['preco'])
             
-            st.info(f"💰 **Preço Tabela (Unitário):** R$ {preco_base:.2f}")
+            st.info(f" **Preço Tabela (Unitário):** R$ {preco_base:.2f}")
             desconto = st.number_input("Desconto Total em R$ (Opcional)", min_value=0.0, value=0.0, step=5.0)
             
             valor_final = (preco_base * qtd) - desconto
-            st.success(f"🏷️ **Valor Total Final:** R$ {valor_final:.2f}")
+            st.success(f" **Valor Total Final:** R$ {valor_final:.2f}")
             
             vendedor = st.text_input("Nome do Vendedor")
             pagamento = st.selectbox("Forma de Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
@@ -381,8 +380,8 @@ if menu == "🛒 Nova Venda":
                     )
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
-elif menu == "📦 Estoque Organizado":
-    st.header("📦 Estoque Organizado por Categoria")
+elif menu == " Estoque Organizado":
+    st.header(" Estoque Organizado por Categoria")
     
     conn = conectar()
     df_estoque = pd.read_sql_query("SELECT id, categoria, nome, amperagem, marca, preco, quantidade, meses_garantia FROM produtos", conn)
@@ -391,14 +390,14 @@ elif menu == "📦 Estoque Organizado":
     categorias = df_estoque['categoria'].unique()
     
     for cat in categorias:
-        with st.expander(f"🔋 Categorias: {cat}", expanded=True):
+        with st.expander(f" Categorias: {cat}", expanded=True):
             df_sub = df_estoque[df_estoque['categoria'] == cat][['id', 'nome', 'marca', 'amperagem', 'preco', 'quantidade', 'meses_garantia']]
             df_sub.columns = ['ID', 'Modelo', 'Marca', 'Amp (Ah)', 'Preço Troca (R$)', 'Qtd Est.', 'Garantia (Meses)']
             st.dataframe(df_sub, use_container_width=True, hide_index=True)
 
 # --- ABA 3: EDITAR BATERIAS ---
-elif menu == "✏️ Editar Baterias":
-    st.header("✏️ Alterar ou Excluir Baterias")
+elif menu == " Editar Baterias":
+    st.header(" Alterar ou Excluir Baterias")
     
     conn = conectar()
     df_prods = pd.read_sql_query("SELECT * FROM produtos ORDER BY id ASC", conn)
@@ -452,8 +451,8 @@ elif menu == "✏️ Editar Baterias":
             st.rerun()
 
 # --- ABA 4: GARANTIA ---
-elif menu == "🛡️ Consultar Garantia":
-    st.header("🛡️ Consulta de Garantias")
+elif menu == " Consultar Garantia":
+    st.header(" Consulta de Garantias")
     termo = st.text_input("🔍 Digite Nome do Cliente, Placa do Veículo ou Nº de Série")
     
     if termo:
@@ -498,8 +497,8 @@ elif menu == "🛡️ Consultar Garantia":
             st.dataframe(pd.DataFrame(resultados), use_container_width=True)
 
 # --- ABA 5: HISTÓRICO ---
-elif menu == "📄 Histórico":
-    st.header("📄 Histórico Geral de Vendas")
+elif menu == " Histórico":
+    st.header(" Histórico Geral de Vendas")
     conn = conectar()
     df_hist = pd.read_sql_query("""
         SELECT id AS 'ID', data_hora AS 'Data/Hora', vendedor AS 'Vendedor', produto_nome AS 'Produto', 
@@ -524,8 +523,8 @@ elif menu == "📊 Painel ADM":
     qtd_un = totais['un_vendidas'].iloc[0] or 0
 
     col1, col2 = st.columns(2)
-    col1.metric("💰 Faturamento Total", f"R$ {fat:,.2f}")
-    col2.metric("📦 Baterias Vendidas", f"{qtd_un} Unidades")
+    col1.metric(" Faturamento Total", f"R$ {fat:,.2f}")
+    col2.metric(" Baterias Vendidas", f"{qtd_un} Unidades")
 
     st.write("---")
     st.subheader("➕ Cadastrar Nova Bateria")
