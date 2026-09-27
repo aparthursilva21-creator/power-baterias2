@@ -64,6 +64,9 @@ def inicializar_banco():
     conn = conectar()
     cursor = conn.cursor()
     
+    # Recria as tabelas garantindo que todas as colunas existem
+    cursor.execute("DROP TABLE IF EXISTS produtos")
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,87 +102,69 @@ def inicializar_banco():
     """)
     conn.commit()
 
-    # Migração automática de colunas ausentes
-    cursor.execute("PRAGMA table_info(produtos)")
-    cols_produtos = [col[1] for col in cursor.fetchall()]
-    if "meses_garantia" not in cols_produtos:
-        cursor.execute("ALTER TABLE produtos ADD COLUMN meses_garantia INTEGER DEFAULT 12")
+    catalogo_exato = [
+        ("36/40/45/48 Ah", "Heliar 48Ah", 48, "Heliar", 550.00, 10, 24),
+        ("36/40/45/48 Ah", "Moura 48Ah", 48, "Moura", 550.00, 10, 24),
+        ("36/40/45/48 Ah", "Cral 45Ah", 45, "Cral", 420.00, 10, 24),
+        ("36/40/45/48 Ah", "KF 40Ah", 40, "KF", 250.00, 10, 12),
+        ("36/40/45/48 Ah", "Super Life 36Ah", 36, "Super Life", 220.00, 10, 12),
 
-    cursor.execute("PRAGMA table_info(vendas)")
-    cols_vendas = [col[1] for col in cursor.fetchall()]
-    if "parcelas" not in cols_vendas:
-        cursor.execute("ALTER TABLE vendas ADD COLUMN parcelas TEXT DEFAULT '1x'")
-    if "amperagem" not in cols_vendas:
-        cursor.execute("ALTER TABLE vendas ADD COLUMN amperagem INTEGER DEFAULT 0")
-    if "meses_garantia" not in cols_vendas:
-        cursor.execute("ALTER TABLE vendas ADD COLUMN meses_garantia INTEGER DEFAULT 12")
+        ("50 Ah Caixa Alta", "Heliar 50Ah Caixa Alta", 50, "Heliar", 550.00, 10, 24),
+        ("50 Ah Caixa Alta", "Moura 50Ah Caixa Alta", 50, "Moura", 550.00, 10, 24),
+        ("50 Ah Caixa Alta", "América 50Ah Caixa Alta", 50, "América", 470.00, 10, 18),
+        ("50 Ah Caixa Alta", "Cral 52Ah Caixa Alta", 52, "Cral", 390.00, 10, 18),
+        ("50 Ah Caixa Alta", "KF 52Ah Caixa Alta", 52, "KF", 350.00, 10, 12),
+        ("50 Ah Caixa Alta", "Super Life 50Ah Caixa Alta", 50, "Super Life", 330.00, 10, 12),
 
+        ("50 Ah Slim JD/JE", "Heliar 50Ah Slim", 50, "Heliar", 630.00, 10, 24),
+        ("50 Ah Slim JD/JE", "Moura 50Ah Slim", 50, "Moura", 590.00, 10, 24),
+        ("50 Ah Slim JD/JE", "América 50Ah Slim", 50, "América", 490.00, 10, 18),
+        ("50 Ah Slim JD/JE", "Cral 50Ah Slim", 50, "Cral", 450.00, 10, 18),
+        ("50 Ah Slim JD/JE", "KF 50Ah Slim", 50, "KF", 390.00, 10, 12),
+
+        ("40 Ah Slim JD", "Heliar 40Ah JD", 40, "Heliar", 590.00, 10, 24),
+        ("40 Ah Slim JD", "Moura 40Ah JD", 40, "Moura", 590.00, 10, 24),
+        ("40 Ah Slim JD", "Cral 40Ah JD", 40, "Cral", 420.00, 10, 18),
+        ("40 Ah Slim JD", "KF 40Ah JD", 40, "KF", 350.00, 10, 12),
+
+        ("60 Ah Padrão", "Heliar 60Ah", 60, "Heliar", 550.00, 10, 24),
+        ("60 Ah Padrão", "Moura 60Ah", 60, "Moura", 550.00, 10, 24),
+        ("60 Ah Padrão", "América 60Ah", 60, "América", 450.00, 10, 18),
+        ("60 Ah Padrão", "Cral 60Ah", 60, "Cral", 430.00, 10, 24),
+        ("60 Ah Padrão", "KF 60Ah", 60, "KF", 330.00, 10, 12),
+        ("60 Ah Padrão", "Super Life 60Ah", 60, "Super Life", 330.00, 10, 12),
+
+        ("70 Ah", "Heliar 70Ah", 70, "Heliar", 760.00, 10, 24),
+        ("70 Ah", "Moura 70Ah", 70, "Moura", 760.00, 10, 24),
+        ("70 Ah", "América 70Ah", 70, "América", 590.00, 10, 18),
+        ("70 Ah", "Cral 70Ah", 70, "Cral", 580.00, 10, 24),
+        ("70 Ah", "Super Life 70Ah", 70, "Super Life", 390.00, 10, 12),
+
+        ("75 Ah", "Heliar 75Ah", 75, "Heliar", 790.00, 10, 24),
+        ("75 Ah", "Moura 75Ah", 75, "Moura", 790.00, 10, 24),
+        ("75 Ah", "Cral 75Ah", 75, "Cral", 580.00, 10, 24),
+        ("75 Ah", "KF 75Ah", 75, "KF", 490.00, 10, 12),
+
+        ("90 Ah Heavy Duty", "Heliar 90Ah", 90, "Heliar", 970.00, 10, 15),
+        ("90 Ah Heavy Duty", "Moura 90Ah", 90, "Moura", 970.00, 10, 12),
+        ("90 Ah Heavy Duty", "Cral 90Ah", 90, "Cral", 690.00, 10, 15),
+        ("90 Ah Heavy Duty", "Biachine 90Ah", 90, "Biachine", 590.00, 10, 12),
+
+        ("Linha EFB / Start Stop", "Heliar 50Ah EFB", 50, "Heliar", 890.00, 10, 24),
+        ("Linha EFB / Start Stop", "Moura 50Ah EFB", 50, "Moura", 890.00, 10, 24),
+        ("Linha EFB / Start Stop", "Cral 50Ah EFB", 50, "Cral", 690.00, 10, 24),
+        ("Linha EFB / Start Stop", "Heliar 60Ah EFB Start Stop", 60, "Heliar", 890.00, 10, 24),
+        ("Linha EFB / Start Stop", "Moura 60Ah EFB Start Stop", 60, "Moura", 890.00, 10, 24),
+        ("Linha EFB / Start Stop", "Heliar 72Ah Start Stop", 72, "Heliar", 1150.00, 10, 24),
+        ("Linha EFB / Start Stop", "Moura 72Ah Start Stop", 72, "Moura", 1150.00, 10, 24),
+    ]
+    
+    cursor.executemany("""
+        INSERT INTO produtos (categoria, nome, amperagem, marca, preco, quantidade, meses_garantia)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, catalogo_exato)
+    
     conn.commit()
-
-    cursor.execute("SELECT COUNT(*) FROM produtos")
-    if cursor.fetchone()[0] == 0:
-        catalogo_exato = [
-            ("36/40/45/48 Ah", "Heliar 48Ah", 48, "Heliar", 550.00, 10, 24),
-            ("36/40/45/48 Ah", "Moura 48Ah", 48, "Moura", 550.00, 10, 24),
-            ("36/40/45/48 Ah", "Cral 45Ah", 45, "Cral", 420.00, 10, 24),
-            ("36/40/45/48 Ah", "KF 40Ah", 40, "KF", 250.00, 10, 12),
-            ("36/40/45/48 Ah", "Super Life 36Ah", 36, "Super Life", 220.00, 10, 12),
-
-            ("50 Ah Caixa Alta", "Heliar 50Ah Caixa Alta", 50, "Heliar", 550.00, 10, 24),
-            ("50 Ah Caixa Alta", "Moura 50Ah Caixa Alta", 50, "Moura", 550.00, 10, 24),
-            ("50 Ah Caixa Alta", "América 50Ah Caixa Alta", 50, "América", 470.00, 10, 18),
-            ("50 Ah Caixa Alta", "Cral 52Ah Caixa Alta", 52, "Cral", 390.00, 10, 18),
-            ("50 Ah Caixa Alta", "KF 52Ah Caixa Alta", 52, "KF", 350.00, 10, 12),
-            ("50 Ah Caixa Alta", "Super Life 50Ah Caixa Alta", 50, "Super Life", 330.00, 10, 12),
-
-            ("50 Ah Slim JD/JE", "Heliar 50Ah Slim", 50, "Heliar", 630.00, 10, 24),
-            ("50 Ah Slim JD/JE", "Moura 50Ah Slim", 50, "Moura", 590.00, 10, 24),
-            ("50 Ah Slim JD/JE", "América 50Ah Slim", 50, "América", 490.00, 10, 18),
-            ("50 Ah Slim JD/JE", "Cral 50Ah Slim", 50, "Cral", 450.00, 10, 18),
-            ("50 Ah Slim JD/JE", "KF 50Ah Slim", 50, "KF", 390.00, 10, 12),
-
-            ("40 Ah Slim JD", "Heliar 40Ah JD", 40, "Heliar", 590.00, 10, 24),
-            ("40 Ah Slim JD", "Moura 40Ah JD", 40, "Moura", 590.00, 10, 24),
-            ("40 Ah Slim JD", "Cral 40Ah JD", 40, "Cral", 420.00, 10, 18),
-            ("40 Ah Slim JD", "KF 40Ah JD", 40, "KF", 350.00, 10, 12),
-
-            ("60 Ah Padrão", "Heliar 60Ah", 60, "Heliar", 550.00, 10, 24),
-            ("60 Ah Padrão", "Moura 60Ah", 60, "Moura", 550.00, 10, 24),
-            ("60 Ah Padrão", "América 60Ah", 60, "América", 450.00, 10, 18),
-            ("60 Ah Padrão", "Cral 60Ah", 60, "Cral", 430.00, 10, 24),
-            ("60 Ah Padrão", "KF 60Ah", 60, "KF", 330.00, 10, 12),
-            ("60 Ah Padrão", "Super Life 60Ah", 60, "Super Life", 330.00, 10, 12),
-
-            ("70 Ah", "Heliar 70Ah", 70, "Heliar", 760.00, 10, 24),
-            ("70 Ah", "Moura 70Ah", 70, "Moura", 760.00, 10, 24),
-            ("70 Ah", "América 70Ah", 70, "América", 590.00, 10, 18),
-            ("70 Ah", "Cral 70Ah", 70, "Cral", 580.00, 10, 24),
-            ("70 Ah", "Super Life 70Ah", 70, "Super Life", 390.00, 10, 12),
-
-            ("75 Ah", "Heliar 75Ah", 75, "Heliar", 790.00, 10, 24),
-            ("75 Ah", "Moura 75Ah", 75, "Moura", 790.00, 10, 24),
-            ("75 Ah", "Cral 75Ah", 75, "Cral", 580.00, 10, 24),
-            ("75 Ah", "KF 75Ah", 75, "KF", 490.00, 10, 12),
-
-            ("90 Ah Heavy Duty", "Heliar 90Ah", 90, "Heliar", 970.00, 10, 15),
-            ("90 Ah Heavy Duty", "Moura 90Ah", 90, "Moura", 970.00, 10, 12),
-            ("90 Ah Heavy Duty", "Cral 90Ah", 90, "Cral", 690.00, 10, 15),
-            ("90 Ah Heavy Duty", "Biachine 90Ah", 90, "Biachine", 590.00, 10, 12),
-
-            ("Linha EFB / Start Stop", "Heliar 50Ah EFB", 50, "Heliar", 890.00, 10, 24),
-            ("Linha EFB / Start Stop", "Moura 50Ah EFB", 50, "Moura", 890.00, 10, 24),
-            ("Linha EFB / Start Stop", "Cral 50Ah EFB", 50, "Cral", 690.00, 10, 24),
-            ("Linha EFB / Start Stop", "Heliar 60Ah EFB Start Stop", 60, "Heliar", 890.00, 10, 24),
-            ("Linha EFB / Start Stop", "Moura 60Ah EFB Start Stop", 60, "Moura", 890.00, 10, 24),
-            ("Linha EFB / Start Stop", "Heliar 72Ah Start Stop", 72, "Heliar", 1150.00, 10, 24),
-            ("Linha EFB / Start Stop", "Moura 72Ah Start Stop", 72, "Moura", 1150.00, 10, 24),
-        ]
-        cursor.executemany("""
-            INSERT INTO produtos (categoria, nome, amperagem, marca, preco, quantidade, meses_garantia)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, catalogo_exato)
-        conn.commit()
-
     conn.close()
 
 def gerador_pdf_nota(dados):
@@ -251,8 +236,8 @@ if "logado" not in st.session_state:
     st.session_state["perfil"] = None
 
 if not st.session_state["logado"]:
-    if os.path.exists("lg"):
-        st.image("logg", width=320)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=320)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
