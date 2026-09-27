@@ -253,6 +253,16 @@ def gerador_pdf_nota(dados):
     buffer.seek(0)
     return buffer
 
+def cancelar_venda(id_venda, produto_nome, quantidade):
+    conn = conectar()
+    cursor = conn.cursor()
+    # Devolve o estoque para o produto
+    cursor.execute("UPDATE produtos SET quantidade = quantidade + ? WHERE nome = ?", (quantidade, produto_nome))
+    # Remove o registo de venda
+    cursor.execute("DELETE FROM vendas WHERE id = ?", (id_venda,))
+    conn.commit()
+    conn.close()
+
 inicializar_banco()
 
 # --- LOGIN ---
@@ -306,7 +316,7 @@ def modal_gerar_pdf(dados_venda):
             use_container_width=True
         )
     else:
-        st.warning("⚠️ Biblioteca 'reportlab' não encontrada no servidor! Adicione 'reportlab' ao seu arquivo requirements.txt para gerar o PDF.")
+        st.warning("⚠️ Biblioteca 'reportlab' não instalada no servidor!")
 
 # --- MENU LATERAL ---
 if os.path.exists("logo.png"):
@@ -562,7 +572,7 @@ elif menu == "Consultar Garantia":
 
         st.dataframe(pd.DataFrame(resultados), use_container_width=True, hide_index=True)
 
-# --- ABA 5: HISTÓRICO DE VENDAS COM GERADOR DE PDF ---
+# --- ABA 5: HISTÓRICO DE VENDAS COM GERADOR DE PDF E CANCELAMENTO ---
 elif menu == "Histórico":
     st.header("Histórico Geral de Vendas")
     conn = conectar()
@@ -575,7 +585,7 @@ elif menu == "Histórico":
     else:
         for _, row in df_hist.iterrows():
             with st.container():
-                col_i, col_d, col_v, col_btn = st.columns([1, 3, 2, 2])
+                col_i, col_d, col_v, col_btn, col_del = st.columns([1, 2.5, 2, 2, 2])
                 col_i.write(f"**Nº #{row['id']}**")
                 col_d.write(f"**Data:** {row['data_hora']}<br/>**Cliente:** {row['cliente_nome']}", unsafe_allow_html=True)
                 col_v.write(f"**Produto:** {row['produto_nome']}<br/>**Total:** R$ {row['valor_total']:.2f}", unsafe_allow_html=True)
@@ -611,6 +621,14 @@ elif menu == "Histórico":
                     )
                 else:
                     col_btn.caption("⚠️ Requer ReportLab")
+
+                # Botão de Cancelamento / Estorno (apenas para ADM ou no Histórico)
+                if st.session_state["perfil"] == "ADM":
+                    if col_del.button("🔴 Cancelar Venda", key=f"btn_del_{row['id']}"):
+                        cancelar_venda(row['id'], row['produto_nome'], row['quantidade'])
+                        st.toast(f"Venda #{row['id']} cancelada e item devolvido ao estoque!", icon="✅")
+                        st.rerun()
+
                 st.write("---")
 
 # --- ABA 6: PAINEL ADM ---
