@@ -243,7 +243,7 @@ if not st.session_state["logado"]:
     if os.path.exists("lo.png"):
         st.image("lo.png", width=320)
     else:
-        st.markdown("<h1 style='text-align: center;'>⚡ HELIAR POWER BATERIAS+</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
     st.markdown("<p style='text-align: center; color: #39ff14;'>DISK BATERIAS: (99) 9519-1090</p>", unsafe_allow_html=True)
     st.write("---")
