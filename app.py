@@ -58,13 +58,17 @@ SENHA_ADM = "1234"
 SENHA_VENDEDOR = "venda123"
 
 def conectar():
-    return sqlite3.connect("power_baterias.db")
+    return sqlite3.connect("power_baterias.db", timeout=10)
 
 def inicializar_banco():
     conn = conectar()
     cursor = conn.cursor()
     
-    # Criar tabela de produtos se não existir
+    try:
+        cursor.execute("SELECT meses_garantia, veiculo FROM produtos LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("DROP TABLE IF EXISTS produtos")
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,7 +83,11 @@ def inicializar_banco():
         )
     """)
     
-    # Criar tabela de vendas se não existir
+    try:
+        cursor.execute("SELECT veiculo_modelo, parcelas, amperagem, meses_garantia FROM vendas LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("DROP TABLE IF EXISTS vendas")
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS vendas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,40 +111,6 @@ def inicializar_banco():
     """)
     conn.commit()
 
-    # Migração segura para colunas novas caso a base de dados seja antiga
-    try:
-        cursor.execute("ALTER TABLE produtos ADD COLUMN meses_garantia INTEGER DEFAULT 12")
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        cursor.execute("ALTER TABLE produtos ADD COLUMN veiculo TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        cursor.execute("ALTER TABLE vendas ADD COLUMN veiculo_modelo TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        cursor.execute("ALTER TABLE vendas ADD COLUMN parcelas TEXT DEFAULT '1x'")
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        cursor.execute("ALTER TABLE vendas ADD COLUMN amperagem INTEGER DEFAULT 0")
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        cursor.execute("ALTER TABLE vendas ADD COLUMN meses_garantia INTEGER DEFAULT 12")
-    except sqlite3.OperationalError:
-        pass
-
-    conn.commit()
-
-    # Inserção inicial se o catálogo estiver vazio
     cursor.execute("SELECT COUNT(*) FROM produtos")
     if cursor.fetchone()[0] == 0:
         catalogo_exato = [
@@ -177,68 +151,110 @@ def inicializar_banco():
 
     conn.close()
 
+# MODELO NOTA FISCAL POWER BATERIAS
 def gerador_pdf_nota(dados):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     story = []
     
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#1b8036'), alignment=1, spaceAfter=5)
-    sub_style = ParagraphStyle('SubStyle', parent=styles['Normal'], fontSize=10, textColor=colors.black, alignment=1, spaceAfter=15)
-    body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14)
+    header_title = ParagraphStyle('HeaderTitle', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#28a745'), alignment=0, spaceAfter=2)
+    header_sub = ParagraphStyle('HeaderSub', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#444444'), alignment=0)
+    nf_title = ParagraphStyle('NFTitle', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#000000'), alignment=2)
     
-    story.append(Paragraph("<b>POWER BATERIAS</b>", title_style))
-    story.append(Paragraph("DISK BATERIAS: (61) 99519-1090<br/>COMPROVANTE DE VENDA E TERMO DE GARANTIA", sub_style))
+    body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=9, leading=12)
+    body_bold = ParagraphStyle('BodyBold', parent=styles['Normal'], fontSize=9, leading=12, fontName='Helvetica-Bold')
+
+    # Cabeçalho Nota Fiscal
+    topo = [
+        [
+            Paragraph("<b>POWER BATERIAS</b><br/><font size=8 color='#555555'>AUTOMOTIVAS E UTILITÁRIOS</font>", header_title),
+            Paragraph(f"<b>COMPROVANTE DE VENDA</b><br/><b>Nº: #{dados['id']:06d}</b><br/>Data: {dados['data_hora']}", nf_title)
+        ]
+    ]
+    t_topo = Table(topo, colWidths=[320, 220])
+    t_topo.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
+    story.append(t_topo)
+    
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("<b>DISK BATERIAS:</b> (61) 99519-1090 | Atendimento e Socorro 24h", header_sub))
     story.append(Spacer(1, 10))
-    
-    table_info = [
-        [Paragraph(f"<b>Nº Venda:</b> {dados['id']}", body_style), Paragraph(f"<b>Data/Hora:</b> {dados['data_hora']}", body_style)],
+
+    # Dados Cliente e Veículo
+    dados_cliente = [
+        [Paragraph("<b>DADOS DO CLIENTE E VEÍCULO</b>", ParagraphStyle('H', parent=body_bold, textColor=colors.white)), ""],
         [Paragraph(f"<b>Cliente:</b> {dados['cliente_nome']}", body_style), Paragraph(f"<b>CPF/CNPJ:</b> {dados['cliente_cpf']}", body_style)],
-        [Paragraph(f"<b>Veículo/Placa:</b> {dados['veiculo_modelo']} ({dados['veiculo_placa']})", body_style), Paragraph(f"<b>Nº Série Bateria:</b> {dados['numero_serie']}", body_style)],
-        [Paragraph(f"<b>Vendedor:</b> {dados['vendedor']}", body_style), Paragraph(f"<b>Forma Pagamento:</b> {dados['forma_pagamento']} ({dados['parcelas']})", body_style)],
+        [Paragraph(f"<b>Veículo:</b> {dados['veiculo_modelo']}", body_style), Paragraph(f"<b>Placa:</b> {dados['veiculo_placa']}", body_style)],
+        [Paragraph(f"<b>Nº Série Bateria:</b> {dados['numero_serie']}", body_style), Paragraph(f"<b>Vendedor:</b> {dados['vendedor']}", body_style)],
+    ]
+    t_cli = Table(dados_cliente, colWidths=[270, 270])
+    t_cli.setStyle(TableStyle([
+        ('SPAN', (0,0), (1,0)),
+        ('BACKGROUND', (0,0), (1,0), colors.HexColor('#16191e')),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f8f9fa')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#28a745')),
+        ('INNERGRID', (0,1), (-1,-1), 0.5, colors.HexColor('#e0e0e0')),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    story.append(t_cli)
+    story.append(Spacer(1, 12))
+
+    # Itens da Venda
+    table_prod = [
+        [Paragraph("<b>Item / Descrição</b>", body_bold), Paragraph("<b>Amp</b>", body_bold), Paragraph("<b>Qtd</b>", body_bold), Paragraph("<b>Preço Unit.</b>", body_bold), Paragraph("<b>Desc.</b>", body_bold), Paragraph("<b>Total</b>", body_bold)],
+        [
+            Paragraph(dados['produto_nome'], body_style),
+            Paragraph(f"{dados['amperagem']}Ah", body_style),
+            Paragraph(str(dados['quantidade']), body_style),
+            Paragraph(f"R$ {dados['preco_original']:.2f}", body_style),
+            Paragraph(f"R$ {dados['desconto']:.2f}", body_style),
+            Paragraph(f"<b>R$ {dados['valor_total']:.2f}</b>", body_style)
+        ]
     ]
     
-    t_info = Table(table_info, colWidths=[270, 270])
-    t_info.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f0f0f0')),
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#cccccc')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
+    t_prod = Table(table_prod, colWidths=[220, 50, 40, 75, 65, 90])
+    t_prod.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#28a745')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (1,0), (-1,-1), 'CENTER'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
         ('PADDING', (0,0), (-1,-1), 6),
     ]))
-    story.append(t_info)
-    story.append(Spacer(1, 15))
-    
-    table_prod = [
-        ["Produto / Modelo", "Amp", "Qtd", "Preço Un.", "Desconto", "Total"],
-        [dados['produto_nome'], f"{dados['amperagem']}Ah", str(dados['quantidade']), f"R$ {dados['preco_original']:.2f}", f"R$ {dados['desconto']:.2f}", f"R$ {dados['valor_total']:.2f}"]
-    ]
-    
-    t_prod = Table(table_prod, colWidths=[200, 50, 40, 80, 80, 90])
-    t_prod.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1b8036')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0,0), (-1,0), 6),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
-    ]))
     story.append(t_prod)
-    story.append(Spacer(1, 20))
-    
+    story.append(Spacer(1, 10))
+
+    # Totalizador e Pagamento
+    pag_info = [
+        [
+            Paragraph(f"<b>Forma de Pagamento:</b> {dados['forma_pagamento']} ({dados['parcelas']})", body_style),
+            Paragraph(f"<b>VALOR TOTAL: R$ {dados['valor_total']:.2f}</b>", ParagraphStyle('Tot', parent=body_bold, fontSize=11, alignment=2))
+        ]
+    ]
+    t_pag = Table(pag_info, colWidths=[300, 240])
+    t_pag.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#eef9f1')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#28a745')),
+        ('PADDING', (0,0), (-1,-1), 8),
+    ]))
+    story.append(t_pag)
+    story.append(Spacer(1, 15))
+
+    # Termo de Garantia
     termos = f"""
-    <b>TERMOS DE GARANTIA:</b><br/>
-    1. A garantia deste produto é de <b>{dados['meses_garantia']} meses</b> a contar da data desta venda.<br/>
-    2. A garantia cobre defeitos de fabricação. Danos por mau uso, sobrecarga ou caixa quebrada anulam a garantia.<br/>
+    <b>TERMO DE GARANTIA E CONDIÇÕES GERAIS:</b><br/>
+    1. Este produto possui garantia legal e de fábrica de <b>{dados['meses_garantia']} meses</b> contra defeitos de fabricação a partir desta data.<br/>
+    2. A garantia cobre exclusivamente falhas internas da bateria. Não cobre mau uso, caixa quebrada, polos danificados, descarga profunda ou sobrecarga (alternador com defeito).<br/>
+    3. Obrigatória a apresentação deste comprovante e/ou certificado do fabricante no ato do atendimento.
     """
-    story.append(Paragraph(termos, body_style))
-    story.append(Spacer(1, 30))
-    story.append(Paragraph("___________________________________________________<br/>Assinatura do Cliente", ParagraphStyle('Sign', alignment=1)))
+    story.append(Paragraph(termos, ParagraphStyle('Termos', parent=body_style, fontSize=8, leading=11, textColor=colors.HexColor('#333333'))))
+    
+    story.append(Spacer(1, 25))
+    story.append(Paragraph("___________________________________________________<br/>Assinatura do Cliente / Recebedor", ParagraphStyle('Sign', alignment=1, fontSize=8)))
     
     doc.build(story)
     buffer.seek(0)
     return buffer
 
-# Inicializa o banco de forma segura
 inicializar_banco()
 
 # --- LOGIN ---
@@ -273,6 +289,23 @@ if not st.session_state["logado"]:
             else:
                 st.error("Senha ou usuário incorretos!")
     st.stop()
+
+# --- MODAL DE CONFIRMAÇÃO DE PDF ---
+@st.dialog("Venda Finalizada com Sucesso! 🟢")
+def modal_gerar_pdf(dados_venda):
+    st.write(f"**Cliente:** {dados_venda['cliente_nome']}")
+    st.write(f"**Bateria:** {dados_venda['produto_nome']}")
+    st.write(f"**Valor Total:** R$ {dados_venda['valor_total']:.2f}")
+    st.write("Deseja gerar e baixar a **Nota Fiscal / Comprovante** agora?")
+    
+    pdf_bytes = gerador_pdf_nota(dados_venda)
+    st.download_button(
+        label="📄 Baixar Nota Fiscal (PDF)",
+        data=pdf_bytes,
+        file_name=f"nota_fiscal_{dados_venda['id']}_power_baterias.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
 
 # --- MENU LATERAL ---
 if os.path.exists("logo.png"):
@@ -337,7 +370,7 @@ if menu == "Nova Venda":
             placa = st.text_input("Placa do Veículo (Opcional)")
             serie = st.text_input("Nº de Série da Bateria (Opcional)")
 
-        if st.button("Concluir Venda e Gerar Nota PDF", use_container_width=True):
+        if st.button("Concluir Venda", use_container_width=True):
             if qtd > dados_p['quantidade']:
                 st.error(f"Estoque insuficiente! Restam apenas {dados_p['quantidade']} unidades.")
             else:
@@ -348,43 +381,57 @@ if menu == "Nova Venda":
                 dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 
                 cursor.execute("""
-                    INSERT INTO vendas (data_hora, vendedor, produto_nome, quantidade, preco_original, desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia)
+                    INSERT INTO vendas (
+                        data_hora, vendedor, produto_nome, quantidade, preco_original, 
+                        desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, 
+                        veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia
+                    )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (dt_hoje, vendedor or "Atendente", dados_p['nome'], qtd, preco_base, desconto, valor_final, pagamento, cliente or "Não Informado", cpf or "Não Informado", placa.upper() or "Não Informado", veiculo_mod or "Não Informado", serie.upper() or "Não Informado", parcelas, dados_p['amperagem'], dados_p['meses_garantia']))
+                """, (
+                    dt_hoje, 
+                    vendedor or "Atendente", 
+                    dados_p['nome'], 
+                    qtd, 
+                    preco_base, 
+                    desconto, 
+                    valor_final, 
+                    pagamento, 
+                    cliente or "Consumidor Não Identificado", 
+                    cpf or "Não Informado", 
+                    placa.upper() or "Não Informado", 
+                    veiculo_mod or "Não Informado", 
+                    serie.upper() or "Não Informado", 
+                    parcelas, 
+                    int(dados_p['amperagem']), 
+                    int(dados_p['meses_garantia'])
+                ))
                 
                 id_venda = cursor.lastrowid
                 conn.commit()
                 conn.close()
-                
-                st.success(f"Venda Nº {id_venda} concluída com sucesso!")
-                
-                if REPORTLAB_DISPONIVEL:
-                    dados_venda_pdf = {
-                        'id': id_venda,
-                        'data_hora': dt_hoje,
-                        'vendedor': vendedor or "Atendente",
-                        'cliente_nome': cliente or "Consumidor",
-                        'cliente_cpf': cpf or "Não Informado",
-                        'veiculo_placa': placa.upper() or "Não Informado",
-                        'veiculo_modelo': veiculo_mod or "Não Informado",
-                        'numero_serie': serie.upper() or "Não Informado",
-                        'produto_nome': dados_p['nome'],
-                        'amperagem': dados_p['amperagem'],
-                        'quantidade': qtd,
-                        'preco_original': preco_base,
-                        'desconto': desconto,
-                        'valor_total': valor_final,
-                        'forma_pagamento': pagamento,
-                        'parcelas': parcelas,
-                        'meses_garantia': dados_p['meses_garantia']
-                    }
-                    pdf_bytes = gerador_pdf_nota(dados_venda_pdf)
-                    st.download_button(
-                        label="Baixar Comprovante / Termo de Garantia PDF",
-                        data=pdf_bytes,
-                        file_name=f"nota_venda_{id_venda}_power_baterias.pdf",
-                        mime="application/pdf"
-                    )
+
+                dados_venda_pdf = {
+                    'id': id_venda,
+                    'data_hora': dt_hoje,
+                    'vendedor': vendedor or "Atendente",
+                    'cliente_nome': cliente or "Consumidor Não Identificado",
+                    'cliente_cpf': cpf or "Não Informado",
+                    'veiculo_placa': placa.upper() or "Não Informado",
+                    'veiculo_modelo': veiculo_mod or "Não Informado",
+                    'numero_serie': serie.upper() or "Não Informado",
+                    'produto_nome': dados_p['nome'],
+                    'amperagem': dados_p['amperagem'],
+                    'quantidade': qtd,
+                    'preco_original': preco_base,
+                    'desconto': desconto,
+                    'valor_total': valor_final,
+                    'forma_pagamento': pagamento,
+                    'parcelas': parcelas,
+                    'meses_garantia': dados_p['meses_garantia']
+                }
+
+                # Dispara o Popup do PDF
+                modal_gerar_pdf(dados_venda_pdf)
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
 elif menu == "Estoque Organizado":
@@ -515,33 +562,53 @@ elif menu == "Consultar Garantia":
 
         st.dataframe(pd.DataFrame(resultados), use_container_width=True, hide_index=True)
 
-# --- ABA 5: HISTÓRICO ---
+# --- ABA 5: HISTÓRICO DE VENDAS COM GERADOR DE PDF ---
 elif menu == "Histórico":
     st.header("Histórico Geral de Vendas")
     conn = conectar()
     
-    df_hist = pd.read_sql_query("""
-        SELECT 
-            id AS 'Nº Venda',
-            data_hora AS 'Data/Hora',
-            vendedor AS 'Vendedor',
-            cliente_nome AS 'Cliente',
-            cliente_cpf AS 'CPF/CNPJ',
-            produto_nome AS 'Produto',
-            veiculo_modelo AS 'Veículo',
-            veiculo_placa AS 'Placa',
-            quantidade AS 'Qtd',
-            valor_total AS 'Total (R$)',
-            forma_pagamento AS 'Pagamento'
-        FROM vendas 
-        ORDER BY id DESC
-    """, conn)
+    df_hist = pd.read_sql_query("SELECT * FROM vendas ORDER BY id DESC", conn)
     conn.close()
     
     if df_hist.empty:
         st.info("Nenhuma venda registada até ao momento.")
     else:
-        st.dataframe(df_hist, use_container_width=True, hide_index=True)
+        for _, row in df_hist.iterrows():
+            with st.container():
+                col_i, col_d, col_v, col_btn = st.columns([1, 3, 2, 2])
+                col_i.write(f"**Nº #{row['id']}**")
+                col_d.write(f"**Data:** {row['data_hora']}<br/>**Cliente:** {row['cliente_nome']}", unsafe_allow_html=True)
+                col_v.write(f"**Produto:** {row['produto_nome']}<br/>**Total:** R$ {row['valor_total']:.2f}", unsafe_allow_html=True)
+                
+                dados_v = {
+                    'id': row['id'],
+                    'data_hora': row['data_hora'],
+                    'vendedor': row['vendedor'],
+                    'cliente_nome': row['cliente_nome'],
+                    'cliente_cpf': row['cliente_cpf'],
+                    'veiculo_placa': row['veiculo_placa'],
+                    'veiculo_modelo': row['veiculo_modelo'],
+                    'numero_serie': row['numero_serie'],
+                    'produto_nome': row['produto_nome'],
+                    'amperagem': row['amperagem'],
+                    'quantidade': row['quantidade'],
+                    'preco_original': row['preco_original'],
+                    'desconto': row['desconto'],
+                    'valor_total': row['valor_total'],
+                    'forma_pagamento': row['forma_pagamento'],
+                    'parcelas': row['parcelas'],
+                    'meses_garantia': row['meses_garantia']
+                }
+                
+                pdf_bytes = gerador_pdf_nota(dados_v)
+                col_btn.download_button(
+                    label="📄 Nota Fiscal PDF",
+                    data=pdf_bytes,
+                    file_name=f"nota_fiscal_{row['id']}_power_baterias.pdf",
+                    mime="application/pdf",
+                    key=f"btn_pdf_{row['id']}"
+                )
+                st.write("---")
 
 # --- ABA 6: PAINEL ADM ---
 elif menu == "Painel ADM":
