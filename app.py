@@ -262,7 +262,7 @@ if "logado" not in st.session_state:
 
 if not st.session_state["logado"]:
     if os.path.exists("logo.png"):
-        st.image("lng", width=320)
+        st.image("logo.png", width=320)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
