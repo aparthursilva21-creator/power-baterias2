@@ -64,6 +64,7 @@ def inicializar_banco():
     conn = conectar()
     cursor = conn.cursor()
     
+    # Recria produtos se houver incoerência de esquema
     try:
         cursor.execute("SELECT meses_garantia, veiculo FROM produtos LIMIT 1")
     except sqlite3.OperationalError:
@@ -83,9 +84,10 @@ def inicializar_banco():
         )
     """)
     
-    try:
-        cursor.execute("SELECT veiculo_modelo, parcelas, amperagem, meses_garantia FROM vendas LIMIT 1")
-    except sqlite3.OperationalError:
+    # Força recriação da tabela vendas se ela não tiver exatamente as 17 colunas esperadas
+    cursor.execute("PRAGMA table_info(vendas)")
+    colunas_vendas = cursor.fetchall()
+    if len(colunas_vendas) != 17:
         cursor.execute("DROP TABLE IF EXISTS vendas")
 
     cursor.execute("""
@@ -151,7 +153,6 @@ def inicializar_banco():
 
     conn.close()
 
-# MODELO NOTA FISCAL POWER BATERIAS
 def gerador_pdf_nota(dados):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -165,7 +166,6 @@ def gerador_pdf_nota(dados):
     body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=9, leading=12)
     body_bold = ParagraphStyle('BodyBold', parent=styles['Normal'], fontSize=9, leading=12, fontName='Helvetica-Bold')
 
-    # Cabeçalho Nota Fiscal
     topo = [
         [
             Paragraph("<b>POWER BATERIAS</b><br/><font size=8 color='#555555'>AUTOMOTIVAS E UTILITÁRIOS</font>", header_title),
@@ -180,7 +180,6 @@ def gerador_pdf_nota(dados):
     story.append(Paragraph("<b>DISK BATERIAS:</b> (61) 99519-1090 | Atendimento e Socorro 24h", header_sub))
     story.append(Spacer(1, 10))
 
-    # Dados Cliente e Veículo
     dados_cliente = [
         [Paragraph("<b>DADOS DO CLIENTE E VEÍCULO</b>", ParagraphStyle('H', parent=body_bold, textColor=colors.white)), ""],
         [Paragraph(f"<b>Cliente:</b> {dados['cliente_nome']}", body_style), Paragraph(f"<b>CPF/CNPJ:</b> {dados['cliente_cpf']}", body_style)],
@@ -199,7 +198,6 @@ def gerador_pdf_nota(dados):
     story.append(t_cli)
     story.append(Spacer(1, 12))
 
-    # Itens da Venda
     table_prod = [
         [Paragraph("<b>Item / Descrição</b>", body_bold), Paragraph("<b>Amp</b>", body_bold), Paragraph("<b>Qtd</b>", body_bold), Paragraph("<b>Preço Unit.</b>", body_bold), Paragraph("<b>Desc.</b>", body_bold), Paragraph("<b>Total</b>", body_bold)],
         [
@@ -223,7 +221,6 @@ def gerador_pdf_nota(dados):
     story.append(t_prod)
     story.append(Spacer(1, 10))
 
-    # Totalizador e Pagamento
     pag_info = [
         [
             Paragraph(f"<b>Forma de Pagamento:</b> {dados['forma_pagamento']} ({dados['parcelas']})", body_style),
@@ -239,7 +236,6 @@ def gerador_pdf_nota(dados):
     story.append(t_pag)
     story.append(Spacer(1, 15))
 
-    # Termo de Garantia
     termos = f"""
     <b>TERMO DE GARANTIA E CONDIÇÕES GERAIS:</b><br/>
     1. Este produto possui garantia legal e de fábrica de <b>{dados['meses_garantia']} meses</b> contra defeitos de fabricação a partir desta data.<br/>
@@ -430,7 +426,6 @@ if menu == "Nova Venda":
                     'meses_garantia': dados_p['meses_garantia']
                 }
 
-                # Dispara o Popup do PDF
                 modal_gerar_pdf(dados_venda_pdf)
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
