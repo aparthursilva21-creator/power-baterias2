@@ -64,9 +64,7 @@ def inicializar_banco():
     conn = conectar()
     cursor = conn.cursor()
     
-    # Recria as tabelas garantindo que todas as colunas existem
-    cursor.execute("DROP TABLE IF EXISTS produtos")
-    
+    # Criar tabela de produtos se não existir
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,10 +74,12 @@ def inicializar_banco():
             marca TEXT NOT NULL,
             preco REAL NOT NULL,
             quantidade INTEGER NOT NULL,
-            meses_garantia INTEGER DEFAULT 12
+            meses_garantia INTEGER DEFAULT 12,
+            veiculo TEXT DEFAULT ''
         )
     """)
     
+    # Criar tabela de vendas se não existir
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS vendas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,6 +94,7 @@ def inicializar_banco():
             cliente_nome TEXT,
             cliente_cpf TEXT,
             veiculo_placa TEXT,
+            veiculo_modelo TEXT DEFAULT '',
             numero_serie TEXT,
             parcelas TEXT DEFAULT '1x',
             amperagem INTEGER DEFAULT 0,
@@ -102,69 +103,78 @@ def inicializar_banco():
     """)
     conn.commit()
 
-    catalogo_exato = [
-        ("36/40/45/48 Ah", "Heliar 48Ah", 48, "Heliar", 550.00, 10, 24),
-        ("36/40/45/48 Ah", "Moura 48Ah", 48, "Moura", 550.00, 10, 24),
-        ("36/40/45/48 Ah", "Cral 45Ah", 45, "Cral", 420.00, 10, 24),
-        ("36/40/45/48 Ah", "KF 40Ah", 40, "KF", 250.00, 10, 12),
-        ("36/40/45/48 Ah", "Super Life 36Ah", 36, "Super Life", 220.00, 10, 12),
+    # Migração segura para colunas novas caso a base de dados seja antiga
+    try:
+        cursor.execute("ALTER TABLE produtos ADD COLUMN meses_garantia INTEGER DEFAULT 12")
+    except sqlite3.OperationalError:
+        pass
 
-        ("50 Ah Caixa Alta", "Heliar 50Ah Caixa Alta", 50, "Heliar", 550.00, 10, 24),
-        ("50 Ah Caixa Alta", "Moura 50Ah Caixa Alta", 50, "Moura", 550.00, 10, 24),
-        ("50 Ah Caixa Alta", "América 50Ah Caixa Alta", 50, "América", 470.00, 10, 18),
-        ("50 Ah Caixa Alta", "Cral 52Ah Caixa Alta", 52, "Cral", 390.00, 10, 18),
-        ("50 Ah Caixa Alta", "KF 52Ah Caixa Alta", 52, "KF", 350.00, 10, 12),
-        ("50 Ah Caixa Alta", "Super Life 50Ah Caixa Alta", 50, "Super Life", 330.00, 10, 12),
+    try:
+        cursor.execute("ALTER TABLE produtos ADD COLUMN veiculo TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
 
-        ("50 Ah Slim JD/JE", "Heliar 50Ah Slim", 50, "Heliar", 630.00, 10, 24),
-        ("50 Ah Slim JD/JE", "Moura 50Ah Slim", 50, "Moura", 590.00, 10, 24),
-        ("50 Ah Slim JD/JE", "América 50Ah Slim", 50, "América", 490.00, 10, 18),
-        ("50 Ah Slim JD/JE", "Cral 50Ah Slim", 50, "Cral", 450.00, 10, 18),
-        ("50 Ah Slim JD/JE", "KF 50Ah Slim", 50, "KF", 390.00, 10, 12),
+    try:
+        cursor.execute("ALTER TABLE vendas ADD COLUMN veiculo_modelo TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
 
-        ("40 Ah Slim JD", "Heliar 40Ah JD", 40, "Heliar", 590.00, 10, 24),
-        ("40 Ah Slim JD", "Moura 40Ah JD", 40, "Moura", 590.00, 10, 24),
-        ("40 Ah Slim JD", "Cral 40Ah JD", 40, "Cral", 420.00, 10, 18),
-        ("40 Ah Slim JD", "KF 40Ah JD", 40, "KF", 350.00, 10, 12),
+    try:
+        cursor.execute("ALTER TABLE vendas ADD COLUMN parcelas TEXT DEFAULT '1x'")
+    except sqlite3.OperationalError:
+        pass
 
-        ("60 Ah Padrão", "Heliar 60Ah", 60, "Heliar", 550.00, 10, 24),
-        ("60 Ah Padrão", "Moura 60Ah", 60, "Moura", 550.00, 10, 24),
-        ("60 Ah Padrão", "América 60Ah", 60, "América", 450.00, 10, 18),
-        ("60 Ah Padrão", "Cral 60Ah", 60, "Cral", 430.00, 10, 24),
-        ("60 Ah Padrão", "KF 60Ah", 60, "KF", 330.00, 10, 12),
-        ("60 Ah Padrão", "Super Life 60Ah", 60, "Super Life", 330.00, 10, 12),
+    try:
+        cursor.execute("ALTER TABLE vendas ADD COLUMN amperagem INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
 
-        ("70 Ah", "Heliar 70Ah", 70, "Heliar", 760.00, 10, 24),
-        ("70 Ah", "Moura 70Ah", 70, "Moura", 760.00, 10, 24),
-        ("70 Ah", "América 70Ah", 70, "América", 590.00, 10, 18),
-        ("70 Ah", "Cral 70Ah", 70, "Cral", 580.00, 10, 24),
-        ("70 Ah", "Super Life 70Ah", 70, "Super Life", 390.00, 10, 12),
+    try:
+        cursor.execute("ALTER TABLE vendas ADD COLUMN meses_garantia INTEGER DEFAULT 12")
+    except sqlite3.OperationalError:
+        pass
 
-        ("75 Ah", "Heliar 75Ah", 75, "Heliar", 790.00, 10, 24),
-        ("75 Ah", "Moura 75Ah", 75, "Moura", 790.00, 10, 24),
-        ("75 Ah", "Cral 75Ah", 75, "Cral", 580.00, 10, 24),
-        ("75 Ah", "KF 75Ah", 75, "KF", 490.00, 10, 12),
-
-        ("90 Ah Heavy Duty", "Heliar 90Ah", 90, "Heliar", 970.00, 10, 15),
-        ("90 Ah Heavy Duty", "Moura 90Ah", 90, "Moura", 970.00, 10, 12),
-        ("90 Ah Heavy Duty", "Cral 90Ah", 90, "Cral", 690.00, 10, 15),
-        ("90 Ah Heavy Duty", "Biachine 90Ah", 90, "Biachine", 590.00, 10, 12),
-
-        ("Linha EFB / Start Stop", "Heliar 50Ah EFB", 50, "Heliar", 890.00, 10, 24),
-        ("Linha EFB / Start Stop", "Moura 50Ah EFB", 50, "Moura", 890.00, 10, 24),
-        ("Linha EFB / Start Stop", "Cral 50Ah EFB", 50, "Cral", 690.00, 10, 24),
-        ("Linha EFB / Start Stop", "Heliar 60Ah EFB Start Stop", 60, "Heliar", 890.00, 10, 24),
-        ("Linha EFB / Start Stop", "Moura 60Ah EFB Start Stop", 60, "Moura", 890.00, 10, 24),
-        ("Linha EFB / Start Stop", "Heliar 72Ah Start Stop", 72, "Heliar", 1150.00, 10, 24),
-        ("Linha EFB / Start Stop", "Moura 72Ah Start Stop", 72, "Moura", 1150.00, 10, 24),
-    ]
-    
-    cursor.executemany("""
-        INSERT INTO produtos (categoria, nome, amperagem, marca, preco, quantidade, meses_garantia)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, catalogo_exato)
-    
     conn.commit()
+
+    # Inserção inicial se o catálogo estiver vazio
+    cursor.execute("SELECT COUNT(*) FROM produtos")
+    if cursor.fetchone()[0] == 0:
+        catalogo_exato = [
+            ("36/40/45/48 Ah", "Heliar 48Ah", 48, "Heliar", 550.00, 10, 24, "Gol, Palio, Uno"),
+            ("36/40/45/48 Ah", "Moura 48Ah", 48, "Moura", 550.00, 10, 24, "Gol, Palio, Uno"),
+            ("36/40/45/48 Ah", "Cral 45Ah", 45, "Cral", 420.00, 10, 24, "Celta, Ka, Fit"),
+            ("36/40/45/48 Ah", "KF 40Ah", 40, "KF", 250.00, 10, 12, "Motos / Veículos Leves"),
+            ("36/40/45/48 Ah", "Super Life 36Ah", 36, "Super Life", 220.00, 10, 12, "Veículos Populares"),
+
+            ("50 Ah Caixa Alta", "Heliar 50Ah Caixa Alta", 50, "Heliar", 550.00, 10, 24, "Fiesta, EcoSport, Ka"),
+            ("50 Ah Caixa Alta", "Moura 50Ah Caixa Alta", 50, "Moura", 550.00, 10, 24, "Fiesta, EcoSport, Ka"),
+            ("50 Ah Caixa Alta", "América 50Ah Caixa Alta", 50, "América", 470.00, 10, 18, "Ford / Honda"),
+            ("50 Ah Caixa Alta", "Cral 52Ah Caixa Alta", 52, "Cral", 390.00, 10, 18, "Ford / Honda"),
+            ("50 Ah Caixa Alta", "KF 52Ah Caixa Alta", 52, "KF", 350.00, 10, 12, "Ford / Honda"),
+            ("50 Ah Caixa Alta", "Super Life 50Ah Caixa Alta", 50, "Super Life", 330.00, 10, 12, "Ford / Honda"),
+
+            ("60 Ah Padrão", "Heliar 60Ah", 60, "Heliar", 550.00, 10, 24, "Civic, Corolla, Onix, HB20, Fox"),
+            ("60 Ah Padrão", "Moura 60Ah", 60, "Moura", 550.00, 10, 24, "Civic, Corolla, Onix, HB20, Fox"),
+            ("60 Ah Padrão", "América 60Ah", 60, "América", 450.00, 10, 18, "Carros de Passeio Médios"),
+            ("60 Ah Padrão", "Cral 60Ah", 60, "Cral", 430.00, 10, 24, "Carros de Passeio Médios"),
+            ("60 Ah Padrão", "KF 60Ah", 60, "KF", 330.00, 10, 12, "Carros de Passeio Médios"),
+            ("60 Ah Padrão", "Super Life 60Ah", 60, "Super Life", 330.00, 10, 12, "Carros de Passeio Médios"),
+
+            ("70 Ah", "Heliar 70Ah", 70, "Heliar", 760.00, 10, 24, "SUVs, Pickups, Compass, Renegade"),
+            ("70 Ah", "Moura 70Ah", 70, "Moura", 760.00, 10, 24, "SUVs, Pickups, Compass, Renegade"),
+            ("70 Ah", "América 70Ah", 70, "América", 590.00, 10, 18, "SUVs e Utilitários"),
+            ("70 Ah", "Cral 70Ah", 70, "Cral", 580.00, 10, 24, "SUVs e Utilitários"),
+            ("70 Ah", "Super Life 70Ah", 70, "Super Life", 390.00, 10, 12, "SUVs e Utilitários"),
+
+            ("Linha EFB / Start Stop", "Heliar 60Ah EFB Start Stop", 60, "Heliar", 890.00, 10, 24, "Renegade, Argo, Toro, Golf"),
+            ("Linha EFB / Start Stop", "Moura 60Ah EFB Start Stop", 60, "Moura", 890.00, 10, 24, "Renegade, Argo, Toro, Golf"),
+        ]
+        cursor.executemany("""
+            INSERT INTO produtos (categoria, nome, amperagem, marca, preco, quantidade, meses_garantia, veiculo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, catalogo_exato)
+        conn.commit()
+
     conn.close()
 
 def gerador_pdf_nota(dados):
@@ -184,7 +194,7 @@ def gerador_pdf_nota(dados):
     table_info = [
         [Paragraph(f"<b>Nº Venda:</b> {dados['id']}", body_style), Paragraph(f"<b>Data/Hora:</b> {dados['data_hora']}", body_style)],
         [Paragraph(f"<b>Cliente:</b> {dados['cliente_nome']}", body_style), Paragraph(f"<b>CPF/CNPJ:</b> {dados['cliente_cpf']}", body_style)],
-        [Paragraph(f"<b>Veículo Placa:</b> {dados['veiculo_placa']}", body_style), Paragraph(f"<b>Nº Série Bateria:</b> {dados['numero_serie']}", body_style)],
+        [Paragraph(f"<b>Veículo/Placa:</b> {dados['veiculo_modelo']} ({dados['veiculo_placa']})", body_style), Paragraph(f"<b>Nº Série Bateria:</b> {dados['numero_serie']}", body_style)],
         [Paragraph(f"<b>Vendedor:</b> {dados['vendedor']}", body_style), Paragraph(f"<b>Forma Pagamento:</b> {dados['forma_pagamento']} ({dados['parcelas']})", body_style)],
     ]
     
@@ -228,6 +238,7 @@ def gerador_pdf_nota(dados):
     buffer.seek(0)
     return buffer
 
+# Inicializa o banco de forma segura
 inicializar_banco()
 
 # --- LOGIN ---
@@ -288,7 +299,7 @@ if menu == "Nova Venda":
     st.header("Lançamento de Venda")
     
     conn = conectar()
-    df_prods = pd.read_sql_query("SELECT id, categoria, nome, amperagem, preco, quantidade, meses_garantia FROM produtos WHERE quantidade > 0", conn)
+    df_prods = pd.read_sql_query("SELECT id, categoria, nome, amperagem, preco, quantidade, meses_garantia, veiculo FROM produtos WHERE quantidade > 0", conn)
     conn.close()
 
     if df_prods.empty:
@@ -319,9 +330,10 @@ if menu == "Nova Venda":
             parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
             
         with col2:
-            st.subheader("Dados para Nota e Garantia")
+            st.subheader("Dados do Cliente e Veículo")
             cliente = st.text_input("Nome do Cliente")
-            cpf = st.text_input("CPF/CNPJ (Opcional)")
+            cpf = st.text_input("CPF / CNPJ (Opcional)")
+            veiculo_mod = st.text_input("Modelo do Veículo (ex: Civic, Gol, Corolla)", value=dados_p['veiculo'] or "")
             placa = st.text_input("Placa do Veículo (Opcional)")
             serie = st.text_input("Nº de Série da Bateria (Opcional)")
 
@@ -336,9 +348,9 @@ if menu == "Nova Venda":
                 dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 
                 cursor.execute("""
-                    INSERT INTO vendas (data_hora, vendedor, produto_nome, quantidade, preco_original, desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, veiculo_placa, numero_serie, parcelas, amperagem, meses_garantia)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (dt_hoje, vendedor or "Atendente", dados_p['nome'], qtd, preco_base, desconto, valor_final, pagamento, cliente or "Não Informado", cpf or "Não Informado", placa.upper() or "Não Informado", serie.upper() or "Não Informado", parcelas, dados_p['amperagem'], dados_p['meses_garantia']))
+                    INSERT INTO vendas (data_hora, vendedor, produto_nome, quantidade, preco_original, desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (dt_hoje, vendedor or "Atendente", dados_p['nome'], qtd, preco_base, desconto, valor_final, pagamento, cliente or "Não Informado", cpf or "Não Informado", placa.upper() or "Não Informado", veiculo_mod or "Não Informado", serie.upper() or "Não Informado", parcelas, dados_p['amperagem'], dados_p['meses_garantia']))
                 
                 id_venda = cursor.lastrowid
                 conn.commit()
@@ -354,6 +366,7 @@ if menu == "Nova Venda":
                         'cliente_nome': cliente or "Consumidor",
                         'cliente_cpf': cpf or "Não Informado",
                         'veiculo_placa': placa.upper() or "Não Informado",
+                        'veiculo_modelo': veiculo_mod or "Não Informado",
                         'numero_serie': serie.upper() or "Não Informado",
                         'produto_nome': dados_p['nome'],
                         'amperagem': dados_p['amperagem'],
@@ -367,7 +380,7 @@ if menu == "Nova Venda":
                     }
                     pdf_bytes = gerador_pdf_nota(dados_venda_pdf)
                     st.download_button(
-                        label="Baixar Comprovante/Nota de Garantia em PDF",
+                        label="Baixar Comprovante / Termo de Garantia PDF",
                         data=pdf_bytes,
                         file_name=f"nota_venda_{id_venda}_power_baterias.pdf",
                         mime="application/pdf"
@@ -378,15 +391,15 @@ elif menu == "Estoque Organizado":
     st.header("Estoque Organizado por Categoria")
     
     conn = conectar()
-    df_estoque = pd.read_sql_query("SELECT id, categoria, nome, amperagem, marca, preco, quantidade, meses_garantia FROM produtos", conn)
+    df_estoque = pd.read_sql_query("SELECT id, categoria, nome, amperagem, marca, veiculo, preco, quantidade, meses_garantia FROM produtos", conn)
     conn.close()
     
     categorias = df_estoque['categoria'].unique()
     
     for cat in categorias:
         with st.expander(f"Categoria: {cat}", expanded=True):
-            df_sub = df_estoque[df_estoque['categoria'] == cat][['id', 'nome', 'marca', 'amperagem', 'preco', 'quantidade', 'meses_garantia']]
-            df_sub.columns = ['ID', 'Modelo', 'Marca', 'Amp (Ah)', 'Preço (R$)', 'Qtd Est.', 'Garantia (Meses)']
+            df_sub = df_estoque[df_estoque['categoria'] == cat][['id', 'nome', 'marca', 'amperagem', 'veiculo', 'preco', 'quantidade', 'meses_garantia']]
+            df_sub.columns = ['ID', 'Modelo', 'Marca', 'Amp (Ah)', 'Veículos Indicados', 'Preço (R$)', 'Qtd Est.', 'Garantia (Meses)']
             st.dataframe(df_sub, use_container_width=True, hide_index=True)
 
 # --- ABA 3: EDITAR BATERIAS ---
@@ -410,6 +423,7 @@ elif menu == "Editar Baterias":
         with st.form("form_editar"):
             e_cat = st.text_input("Categoria/Família", value=item['categoria'])
             e_nome = st.text_input("Nome/Modelo", value=item['nome'])
+            e_veiculo = st.text_input("Veículos Recomendados", value=item['veiculo'] if 'veiculo' in item else '')
             col1, col2, col3 = st.columns(3)
             with col1:
                 e_amp = st.number_input("Amperagem (Ah)", min_value=1, value=int(item['amperagem']))
@@ -427,9 +441,9 @@ elif menu == "Editar Baterias":
                 cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE produtos 
-                    SET categoria = ?, nome = ?, amperagem = ?, marca = ?, preco = ?, quantidade = ?, meses_garantia = ?
+                    SET categoria = ?, nome = ?, amperagem = ?, marca = ?, veiculo = ?, preco = ?, quantidade = ?, meses_garantia = ?
                     WHERE id = ?
-                """, (e_cat, e_nome, e_amp, e_marca, e_preco, e_qtd, e_garantia, id_sel))
+                """, (e_cat, e_nome, e_amp, e_marca, e_veiculo, e_preco, e_qtd, e_garantia, id_sel))
                 conn.commit()
                 conn.close()
                 st.success("Bateria atualizada com sucesso!")
@@ -447,62 +461,87 @@ elif menu == "Editar Baterias":
 # --- ABA 4: GARANTIA ---
 elif menu == "Consultar Garantia":
     st.header("Consulta de Garantias")
-    termo = st.text_input("Digite Nome do Cliente, Placa do Veículo ou Nº de Série")
     
+    termo = st.text_input("Pesquisar por Nome do Cliente, CPF, Placa, Veículo ou Nº de Série")
+    
+    conn = conectar()
     if termo:
-        conn = conectar()
         df_garantia = pd.read_sql_query("""
-            SELECT id, data_hora, cliente_nome, produto_nome, amperagem, veiculo_placa, numero_serie, meses_garantia 
+            SELECT id, data_hora, cliente_nome, cliente_cpf, produto_nome, amperagem, veiculo_placa, veiculo_modelo, numero_serie, meses_garantia 
             FROM vendas 
-            WHERE cliente_nome LIKE ? OR veiculo_placa LIKE ? OR numero_serie LIKE ?
-        """, conn, params=(f"%{termo}%", f"%{termo}%", f"%{termo}%"))
-        conn.close()
+            WHERE cliente_nome LIKE ? OR cliente_cpf LIKE ? OR veiculo_placa LIKE ? OR veiculo_modelo LIKE ? OR numero_serie LIKE ?
+            ORDER BY id DESC
+        """, conn, params=(f"%{termo}%", f"%{termo}%", f"%{termo}%", f"%{termo}%", f"%{termo}%"))
+    else:
+        st.subheader("Últimas Vendas Realizadas")
+        df_garantia = pd.read_sql_query("""
+            SELECT id, data_hora, cliente_nome, cliente_cpf, produto_nome, amperagem, veiculo_placa, veiculo_modelo, numero_serie, meses_garantia 
+            FROM vendas 
+            ORDER BY id DESC LIMIT 15
+        """, conn)
+    conn.close()
 
-        if df_garantia.empty:
-            st.warning("Nenhum registro encontrado.")
-        else:
-            hoje = datetime.now()
-            resultados = []
+    if df_garantia.empty:
+        st.warning("Nenhum registo de garantia encontrado.")
+    else:
+        hoje = datetime.now()
+        resultados = []
 
-            for _, r in df_garantia.iterrows():
-                try:
-                    dt_v = datetime.strptime(r['data_hora'], "%d/%m/%Y %H:%M:%S")
-                except:
-                    dt_v = hoje
-                
-                m_garantia = r['meses_garantia'] if r['meses_garantia'] else 12
-                dt_venc = dt_v + timedelta(days=m_garantia * 30)
-                restantes = (dt_venc - hoje).days
+        for _, r in df_garantia.iterrows():
+            try:
+                dt_v = datetime.strptime(r['data_hora'], "%d/%m/%Y %H:%M:%S")
+            except:
+                dt_v = hoje
+            
+            m_garantia = r['meses_garantia'] if r['meses_garantia'] else 12
+            dt_venc = dt_v + timedelta(days=m_garantia * 30)
+            restantes = (dt_venc - hoje).days
 
-                status = "NA GARANTIA" if restantes > 0 else "VENCIDA"
-                tempo_str = f"{restantes} dias restantes" if restantes > 0 else f"Vencida há {abs(restantes)} dias"
+            status = "🟢 NA GARANTIA" if restantes > 0 else "🔴 VENCIDA"
+            tempo_str = f"{restantes} dias restantes" if restantes > 0 else f"Vencida há {abs(restantes)} dias"
 
-                resultados.append({
-                    "ID Venda": r['id'],
-                    "Data": dt_v.strftime("%d/%m/%Y"),
-                    "Cliente": r['cliente_nome'],
-                    "Produto": f"{r['produto_nome']} ({r['amperagem']}Ah)",
-                    "Placa": r['veiculo_placa'],
-                    "Nº Série": r['numero_serie'],
-                    "Status": status,
-                    "Prazo Garantia": tempo_str
-                })
+            resultados.append({
+                "Nº Venda": r['id'],
+                "Data": dt_v.strftime("%d/%m/%Y"),
+                "Cliente": r['cliente_nome'],
+                "CPF / CNPJ": r['cliente_cpf'],
+                "Produto": f"{r['produto_nome']} ({r['amperagem']}Ah)",
+                "Veículo": r['veiculo_modelo'],
+                "Placa": r['veiculo_placa'],
+                "Nº Série": r['numero_serie'],
+                "Status": status,
+                "Prazo": tempo_str
+            })
 
-            st.dataframe(pd.DataFrame(resultados), use_container_width=True)
+        st.dataframe(pd.DataFrame(resultados), use_container_width=True, hide_index=True)
 
 # --- ABA 5: HISTÓRICO ---
 elif menu == "Histórico":
     st.header("Histórico Geral de Vendas")
     conn = conectar()
+    
     df_hist = pd.read_sql_query("""
-        SELECT id AS 'ID', data_hora AS 'Data/Hora', vendedor AS 'Vendedor', produto_nome AS 'Produto', 
-               quantidade AS 'Qtd', preco_original AS 'Preço Tab.', desconto AS 'Desc.', valor_total AS 'Total', 
-               forma_pagamento AS 'Pagamento', cliente_nome AS 'Cliente' 
-        FROM vendas ORDER BY id DESC
+        SELECT 
+            id AS 'Nº Venda',
+            data_hora AS 'Data/Hora',
+            vendedor AS 'Vendedor',
+            cliente_nome AS 'Cliente',
+            cliente_cpf AS 'CPF/CNPJ',
+            produto_nome AS 'Produto',
+            veiculo_modelo AS 'Veículo',
+            veiculo_placa AS 'Placa',
+            quantidade AS 'Qtd',
+            valor_total AS 'Total (R$)',
+            forma_pagamento AS 'Pagamento'
+        FROM vendas 
+        ORDER BY id DESC
     """, conn)
     conn.close()
     
-    st.dataframe(df_hist, use_container_width=True)
+    if df_hist.empty:
+        st.info("Nenhuma venda registada até ao momento.")
+    else:
+        st.dataframe(df_hist, use_container_width=True, hide_index=True)
 
 # --- ABA 6: PAINEL ADM ---
 elif menu == "Painel ADM":
@@ -510,7 +549,6 @@ elif menu == "Painel ADM":
     
     conn = conectar()
     totais = pd.read_sql_query("SELECT SUM(valor_total) as faturado, SUM(quantidade) as un_vendidas FROM vendas", conn)
-    df_vendas = pd.read_sql_query("SELECT * FROM vendas ORDER BY id DESC", conn)
     conn.close()
 
     fat = totais['faturado'].iloc[0] or 0.0
@@ -525,6 +563,7 @@ elif menu == "Painel ADM":
     with st.form("cad_manual"):
         f_cat = st.text_input("Categoria/Família (ex: 60 Ah Padrão)", value="60 Ah Padrão")
         f_nome = st.text_input("Nome do Modelo (ex: Heliar 60Ah)")
+        f_veiculo = st.text_input("Veículos Recomendados (ex: Civic, Corolla, Onix)", value="Carros de Passeio")
         f_amp = st.number_input("Amperagem (Ah)", min_value=1, value=60)
         f_marca = st.text_input("Marca", value="Heliar")
         f_preco = st.number_input("Preço (R$)", min_value=0.0, value=400.0)
@@ -535,9 +574,9 @@ elif menu == "Painel ADM":
             conn = conectar()
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO produtos (categoria, nome, amperagem, marca, preco, quantidade, meses_garantia)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (f_cat, f_nome, f_amp, f_marca, f_preco, f_qtd, f_garantia))
+                INSERT INTO produtos (categoria, nome, amperagem, marca, veiculo, preco, quantidade, meses_garantia)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (f_cat, f_nome, f_amp, f_marca, f_veiculo, f_preco, f_qtd, f_garantia))
             conn.commit()
             conn.close()
             st.success("Nova bateria cadastrada!")
