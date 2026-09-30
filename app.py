@@ -55,7 +55,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Dicionário com dados dos utilizadores (Usuário: {senha, perfil, nome_exibicao})
+# Dicionário com dados dos utilizadores restritos
 USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
     "sandro": {"senha": "1234", "perfil": "ADM", "nome": "Sandro"},
@@ -297,7 +297,7 @@ if not st.session_state["logado"]:
                 st.session_state["vendedor_nome"] = dados_usr["nome"]
                 st.rerun()
             else:
-                st.error("Usuário ou senha incorretos!")
+                st.error("Usuário ou senha incorretos! Acesso negado.")
     st.stop()
 
 # --- MODAL DE CONFIRMAÇÃO DE PDF ---
@@ -341,10 +341,11 @@ st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
 st.sidebar.markdown(f"Utilizador: **{st.session_state['vendedor_nome']}** ({st.session_state['perfil']})")
 st.sidebar.write("---")
 
+# Restrições de Menu por Perfil (Histórico apenas para ADM)
 if st.session_state["perfil"] == "ADM":
     menu = st.sidebar.radio("Navegação", ["Nova Venda", "Estoque Organizado", "Editar Baterias", "Consultar Garantia", "Histórico", "Painel ADM"])
 else:
-    menu = st.sidebar.radio("Navegação", ["Nova Venda", "Estoque Organizado", "Consultar Garantia", "Histórico"])
+    menu = st.sidebar.radio("Navegação", ["Nova Venda", "Estoque Organizado", "Consultar Garantia"])
 
 st.sidebar.write("---")
 if st.sidebar.button("Sair"):
@@ -386,7 +387,7 @@ if menu == "Nova Venda":
                 
                 with col1:
                     st.subheader("Dados da Venda")
-                    qtd = st.number_input("Quantidade", min_value=1, value=1)
+                    qtd = st.number_input("Quantidade *", min_value=1, value=1)
                     preco_base = float(dados_p['preco'])
                     
                     st.info(f"Preço Tabela (Unitário): R$ {preco_base:.2f}")
@@ -395,22 +396,30 @@ if menu == "Nova Venda":
                     valor_final = (preco_base * qtd) - desconto
                     st.success(f"Valor Total Final: R$ {valor_final:.2f}")
                     
-                    vendedor = st.text_input("Nome do Vendedor", value=st.session_state.get("vendedor_nome", ""))
-                    pagamento = st.selectbox("Forma de Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
+                    # Nome pré-preenchido automaticamente com a sessão logada
+                    vendedor = st.text_input("Nome do Vendedor *", value=st.session_state.get("vendedor_nome", ""))
+                    pagamento = st.selectbox("Forma de Pagamento *", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
                     parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
                     
                 with col2:
                     st.subheader("Dados do Cliente e Veículo")
                     cliente = st.text_input("Nome do Cliente")
                     cpf = st.text_input("CPF / CNPJ (Opcional)")
-                    veiculo_mod = st.text_input("Modelo do Veículo (ex: Civic, Gol, Corolla)", value=dados_p['veiculo'] or "")
+                    veiculo_mod = st.text_input("Modelo do Veículo * (ex: Civic, Gol, Corolla)", value=dados_p['veiculo'] or "")
                     placa = st.text_input("Placa do Veículo (Opcional)")
                     serie = st.text_input("Nº de Série da Bateria (Opcional)")
 
                 btn_finalizar = st.form_submit_button("Concluir Venda", use_container_width=True)
 
             if btn_finalizar:
-                if qtd > dados_p['quantidade']:
+                # Validação dos campos obrigatórios
+                if not vendedor.strip():
+                    st.error("Erro: O campo 'Nome do Vendedor' é obrigatório!")
+                elif not veiculo_mod.strip():
+                    st.error("Erro: O campo 'Modelo do Veículo' é obrigatório para registrar a venda!")
+                elif qtd <= 0:
+                    st.error("Erro: A quantidade deve ser maior que zero!")
+                elif qtd > dados_p['quantidade']:
                     st.error(f"Estoque insuficiente! Restam apenas {dados_p['quantidade']} unidades.")
                 else:
                     conn = conectar()
@@ -428,7 +437,7 @@ if menu == "Nova Venda":
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         dt_hoje, 
-                        vendedor or st.session_state.get("vendedor_nome", "Atendente"), 
+                        vendedor.strip(), 
                         dados_p['nome'], 
                         qtd, 
                         preco_base, 
@@ -438,7 +447,7 @@ if menu == "Nova Venda":
                         cliente or "Consumidor Não Identificado", 
                         cpf or "Não Informado", 
                         placa.upper() or "Não Informado", 
-                        veiculo_mod or "Não Informado", 
+                        veiculo_mod.strip(), 
                         serie.upper() or "Não Informado", 
                         parcelas, 
                         int(dados_p['amperagem']), 
@@ -452,11 +461,11 @@ if menu == "Nova Venda":
                     dados_venda_pdf = {
                         'id': id_venda,
                         'data_hora': dt_hoje,
-                        'vendedor': vendedor or st.session_state.get("vendedor_nome", "Atendente"),
+                        'vendedor': vendedor.strip(),
                         'cliente_nome': cliente or "Consumidor Não Identificado",
                         'cliente_cpf': cpf or "Não Informado",
                         'veiculo_placa': placa.upper() or "Não Informado",
-                        'veiculo_modelo': veiculo_mod or "Não Informado",
+                        'veiculo_modelo': veiculo_mod.strip(),
                         'numero_serie': serie.upper() or "Não Informado",
                         'produto_nome': dados_p['nome'],
                         'amperagem': dados_p['amperagem'],
@@ -488,7 +497,7 @@ elif menu == "Estoque Organizado":
             st.dataframe(df_sub, use_container_width=True, hide_index=True)
 
 # --- ABA 3: EDITAR BATERIAS ---
-elif menu == "Editar Baterias":
+elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     st.header("Alterar ou Excluir Baterias")
     
     conn = conectar()
@@ -600,8 +609,8 @@ elif menu == "Consultar Garantia":
 
         st.dataframe(pd.DataFrame(resultados), use_container_width=True, hide_index=True)
 
-# --- ABA 5: HISTÓRICO DE VENDAS ---
-elif menu == "Histórico":
+# --- ABA 5: HISTÓRICO DE VENDAS (Apenas ADM) ---
+elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
     st.header("Histórico Geral de Vendas")
     conn = conectar()
     
@@ -650,15 +659,13 @@ elif menu == "Histórico":
                 else:
                     col_btn.caption("⚠️ Requer ReportLab")
 
-                # Botão de Cancelamento com Pop-up (Apenas ADM)
-                if st.session_state["perfil"] == "ADM":
-                    if col_del.button("🔴 Cancelar", key=f"btn_del_{row['id']}"):
-                        modal_confirmar_cancelamento(row['id'], row['produto_nome'], row['quantidade'])
+                if col_del.button("🔴 Cancelar", key=f"btn_del_{row['id']}"):
+                    modal_confirmar_cancelamento(row['id'], row['produto_nome'], row['quantidade'])
 
                 st.write("---")
 
 # --- ABA 6: PAINEL ADM ---
-elif menu == "Painel ADM":
+elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
     st.header("Painel Financeiro e Cadastro")
     
     conn = conectar()
