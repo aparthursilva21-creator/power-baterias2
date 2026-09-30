@@ -37,7 +37,7 @@ st.markdown("""
         font-weight: bold !important;
         border-radius: 6px !important;
         border: none !important;
-        padding: 10px 20px !important;
+        padding: 8px 16px !important;
     }
     .stButton>button:hover {
         background-color: #39ff14 !important;
@@ -45,7 +45,7 @@ st.markdown("""
     }
     [data-testid="stMetricValue"] {
         color: #39ff14 !important;
-        font-size: 2.2rem !important;
+        font-size: 2rem !important;
         font-weight: bold !important;
     }
     section[data-testid="stSidebar"] {
@@ -55,8 +55,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-SENHA_ADM = "1234"
-SENHA_VENDEDOR = "venda123"
+# Dicionário com dados dos utilizadores (Usuário: {senha, perfil, nome_exibicao})
+USUARIOS = {
+    "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
+    "sandro": {"senha": "1234", "perfil": "ADM", "nome": "Sandro"},
+    "pedro": {"senha": "Pedro1234", "perfil": "Vendedor", "nome": "Pedro"},
+    "anderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Anderson"},
+}
 
 def conectar():
     return sqlite3.connect("power_baterias.db", timeout=10)
@@ -179,7 +184,7 @@ def gerador_pdf_nota(dados):
     story.append(t_topo)
     
     story.append(Spacer(1, 4))
-    story.append(Paragraph("<b>DISK BATERIAS:</b> (61) 99519-1090 | Atendimento e Socorro 24h", header_sub))
+    story.append(Paragraph("<b>DISK BATERIAS:</b> (61) 99519-1090", header_sub))
     story.append(Spacer(1, 10))
 
     dados_cliente = [
@@ -256,23 +261,22 @@ def gerador_pdf_nota(dados):
 def cancelar_venda(id_venda, produto_nome, quantidade):
     conn = conectar()
     cursor = conn.cursor()
-    # Devolve o estoque para o produto
     cursor.execute("UPDATE produtos SET quantidade = quantidade + ? WHERE nome = ?", (quantidade, produto_nome))
-    # Remove o registo de venda
     cursor.execute("DELETE FROM vendas WHERE id = ?", (id_venda,))
     conn.commit()
     conn.close()
 
 inicializar_banco()
 
-# --- LOGIN ---
+# --- LOGIN E SESSÃO ---
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
     st.session_state["perfil"] = None
+    st.session_state["vendedor_nome"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("lpng"):
-        st.image("logo.png", width=320)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
@@ -282,20 +286,18 @@ if not st.session_state["logado"]:
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         st.subheader("Acesso ao Sistema")
-        usuario = st.text_input("Usuário")
-        senha = st.text_input("Senha", type="password")
+        usuario_input = st.text_input("Usuário").strip().lower()
+        senha_input = st.text_input("Senha", type="password").strip()
         
         if st.button("Entrar", use_container_width=True):
-            if senha == SENHA_ADM:
+            if usuario_input in USUARIOS and USUARIOS[usuario_input]["senha"] == senha_input:
+                dados_usr = USUARIOS[usuario_input]
                 st.session_state["logado"] = True
-                st.session_state["perfil"] = "ADM"
-                st.rerun()
-            elif senha == SENHA_VENDEDOR:
-                st.session_state["logado"] = True
-                st.session_state["perfil"] = "Vendedor"
+                st.session_state["perfil"] = dados_usr["perfil"]
+                st.session_state["vendedor_nome"] = dados_usr["nome"]
                 st.rerun()
             else:
-                st.error("Senha ou usuário incorretos!")
+                st.error("Usuário ou senha incorretos!")
     st.stop()
 
 # --- MODAL DE CONFIRMAÇÃO DE PDF ---
@@ -318,6 +320,17 @@ def modal_gerar_pdf(dados_venda):
     else:
         st.warning("⚠️ Biblioteca 'reportlab' não instalada no servidor!")
 
+# --- MODAL DE CONFIRMAÇÃO PARA CANCELAMENTO ---
+@st.dialog("Confirmar Cancelamento 🔴")
+def modal_confirmar_cancelamento(id_venda, produto_nome, quantidade):
+    st.write(f"Tem certeza que deseja **cancelar a venda #{id_venda}**?")
+    st.caption(f"Produto: {produto_nome} | Qtd a devolver: {quantidade}")
+    
+    if st.button("Sim, Cancelar Venda", use_container_width=True):
+        cancelar_venda(id_venda, produto_nome, quantidade)
+        st.toast(f"Venda #{id_venda} cancelada e produto devolvido!", icon="✅")
+        st.rerun()
+
 # --- MENU LATERAL ---
 if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", use_container_width=True)
@@ -325,7 +338,7 @@ else:
     st.sidebar.markdown("## POWER BATERIAS")
 
 st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
-st.sidebar.caption(f"Perfil: **{st.session_state['perfil']}**")
+st.sidebar.markdown(f"Utilizador: **{st.session_state['vendedor_nome']}** ({st.session_state['perfil']})")
 st.sidebar.write("---")
 
 if st.session_state["perfil"] == "ADM":
@@ -336,6 +349,8 @@ else:
 st.sidebar.write("---")
 if st.sidebar.button("Sair"):
     st.session_state["logado"] = False
+    st.session_state["perfil"] = None
+    st.session_state["vendedor_nome"] = ""
     st.rerun()
 
 # --- ABA 1: NOVA VENDA ---
@@ -349,99 +364,112 @@ if menu == "Nova Venda":
     if df_prods.empty:
         st.warning("Nenhuma bateria disponível no estoque!")
     else:
-        opcoes_prods = [f"ID {row['id']} | {row['nome']} - R$ {row['preco']:.2f} (Estoque: {row['quantidade']})" for _, row in df_prods.iterrows()]
-        prod_sel_str = st.selectbox("Selecione a Bateria", opcoes_prods)
-        id_prod = int(prod_sel_str.split(" ")[1])
-        
-        dados_p = df_prods[df_prods['id'] == id_prod].iloc[0]
-        
-        st.write("---")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Dados da Venda")
-            qtd = st.number_input("Quantidade", min_value=1, value=1)
-            preco_base = float(dados_p['preco'])
-            
-            st.info(f"Preço Tabela (Unitário): R$ {preco_base:.2f}")
-            desconto = st.number_input("Desconto Total em R$ (Opcional)", min_value=0.0, value=0.0, step=5.0)
-            
-            valor_final = (preco_base * qtd) - desconto
-            st.success(f"Valor Total Final: R$ {valor_final:.2f}")
-            
-            vendedor = st.text_input("Nome do Vendedor")
-            pagamento = st.selectbox("Forma de Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
-            parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
-            
-        with col2:
-            st.subheader("Dados do Cliente e Veículo")
-            cliente = st.text_input("Nome do Cliente")
-            cpf = st.text_input("CPF / CNPJ (Opcional)")
-            veiculo_mod = st.text_input("Modelo do Veículo (ex: Civic, Gol, Corolla)", value=dados_p['veiculo'] or "")
-            placa = st.text_input("Placa do Veículo (Opcional)")
-            serie = st.text_input("Nº de Série da Bateria (Opcional)")
+        busca = st.text_input("🔍 Pesquisar bateria (modelo, marca, veiculo):")
+        if busca:
+            df_prods = df_prods[
+                df_prods['nome'].str.contains(busca, case=False, na=False) |
+                df_prods['veiculo'].str.contains(busca, case=False, na=False)
+            ]
 
-        if st.button("Concluir Venda", use_container_width=True):
-            if qtd > dados_p['quantidade']:
-                st.error(f"Estoque insuficiente! Restam apenas {dados_p['quantidade']} unidades.")
-            else:
-                conn = conectar()
-                cursor = conn.cursor()
-                cursor.execute("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?", (qtd, id_prod))
+        if df_prods.empty:
+            st.warning("Nenhum produto localizado com esse termo.")
+        else:
+            opcoes_prods = [f"ID {row['id']} | {row['nome']} - R$ {row['preco']:.2f} (Estoque: {row['quantidade']})" for _, row in df_prods.iterrows()]
+            prod_sel_str = st.selectbox("Selecione a Bateria", opcoes_prods)
+            id_prod = int(prod_sel_str.split(" ")[1])
+            
+            dados_p = df_prods[df_prods['id'] == id_prod].iloc[0]
+            st.write("---")
+            
+            with st.form("form_nova_venda", clear_on_submit=True):
+                col1, col2 = st.columns(2)
                 
-                dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                
-                cursor.execute("""
-                    INSERT INTO vendas (
-                        data_hora, vendedor, produto_nome, quantidade, preco_original, 
-                        desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, 
-                        veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    dt_hoje, 
-                    vendedor or "Atendente", 
-                    dados_p['nome'], 
-                    qtd, 
-                    preco_base, 
-                    desconto, 
-                    valor_final, 
-                    pagamento, 
-                    cliente or "Consumidor Não Identificado", 
-                    cpf or "Não Informado", 
-                    placa.upper() or "Não Informado", 
-                    veiculo_mod or "Não Informado", 
-                    serie.upper() or "Não Informado", 
-                    parcelas, 
-                    int(dados_p['amperagem']), 
-                    int(dados_p['meses_garantia'])
-                ))
-                
-                id_venda = cursor.lastrowid
-                conn.commit()
-                conn.close()
+                with col1:
+                    st.subheader("Dados da Venda")
+                    qtd = st.number_input("Quantidade", min_value=1, value=1)
+                    preco_base = float(dados_p['preco'])
+                    
+                    st.info(f"Preço Tabela (Unitário): R$ {preco_base:.2f}")
+                    desconto = st.number_input("Desconto Total em R$ (Opcional)", min_value=0.0, value=0.0, step=5.0)
+                    
+                    valor_final = (preco_base * qtd) - desconto
+                    st.success(f"Valor Total Final: R$ {valor_final:.2f}")
+                    
+                    vendedor = st.text_input("Nome do Vendedor", value=st.session_state.get("vendedor_nome", ""))
+                    pagamento = st.selectbox("Forma de Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
+                    parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
+                    
+                with col2:
+                    st.subheader("Dados do Cliente e Veículo")
+                    cliente = st.text_input("Nome do Cliente")
+                    cpf = st.text_input("CPF / CNPJ (Opcional)")
+                    veiculo_mod = st.text_input("Modelo do Veículo (ex: Civic, Gol, Corolla)", value=dados_p['veiculo'] or "")
+                    placa = st.text_input("Placa do Veículo (Opcional)")
+                    serie = st.text_input("Nº de Série da Bateria (Opcional)")
 
-                dados_venda_pdf = {
-                    'id': id_venda,
-                    'data_hora': dt_hoje,
-                    'vendedor': vendedor or "Atendente",
-                    'cliente_nome': cliente or "Consumidor Não Identificado",
-                    'cliente_cpf': cpf or "Não Informado",
-                    'veiculo_placa': placa.upper() or "Não Informado",
-                    'veiculo_modelo': veiculo_mod or "Não Informado",
-                    'numero_serie': serie.upper() or "Não Informado",
-                    'produto_nome': dados_p['nome'],
-                    'amperagem': dados_p['amperagem'],
-                    'quantidade': qtd,
-                    'preco_original': preco_base,
-                    'desconto': desconto,
-                    'valor_total': valor_final,
-                    'forma_pagamento': pagamento,
-                    'parcelas': parcelas,
-                    'meses_garantia': dados_p['meses_garantia']
-                }
+                btn_finalizar = st.form_submit_button("Concluir Venda", use_container_width=True)
 
-                modal_gerar_pdf(dados_venda_pdf)
+            if btn_finalizar:
+                if qtd > dados_p['quantidade']:
+                    st.error(f"Estoque insuficiente! Restam apenas {dados_p['quantidade']} unidades.")
+                else:
+                    conn = conectar()
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?", (qtd, id_prod))
+                    
+                    dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    
+                    cursor.execute("""
+                        INSERT INTO vendas (
+                            data_hora, vendedor, produto_nome, quantidade, preco_original, 
+                            desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, 
+                            veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        dt_hoje, 
+                        vendedor or st.session_state.get("vendedor_nome", "Atendente"), 
+                        dados_p['nome'], 
+                        qtd, 
+                        preco_base, 
+                        desconto, 
+                        valor_final, 
+                        pagamento, 
+                        cliente or "Consumidor Não Identificado", 
+                        cpf or "Não Informado", 
+                        placa.upper() or "Não Informado", 
+                        veiculo_mod or "Não Informado", 
+                        serie.upper() or "Não Informado", 
+                        parcelas, 
+                        int(dados_p['amperagem']), 
+                        int(dados_p['meses_garantia'])
+                    ))
+                    
+                    id_venda = cursor.lastrowid
+                    conn.commit()
+                    conn.close()
+
+                    dados_venda_pdf = {
+                        'id': id_venda,
+                        'data_hora': dt_hoje,
+                        'vendedor': vendedor or st.session_state.get("vendedor_nome", "Atendente"),
+                        'cliente_nome': cliente or "Consumidor Não Identificado",
+                        'cliente_cpf': cpf or "Não Informado",
+                        'veiculo_placa': placa.upper() or "Não Informado",
+                        'veiculo_modelo': veiculo_mod or "Não Informado",
+                        'numero_serie': serie.upper() or "Não Informado",
+                        'produto_nome': dados_p['nome'],
+                        'amperagem': dados_p['amperagem'],
+                        'quantidade': qtd,
+                        'preco_original': preco_base,
+                        'desconto': desconto,
+                        'valor_total': valor_final,
+                        'forma_pagamento': pagamento,
+                        'parcelas': parcelas,
+                        'meses_garantia': dados_p['meses_garantia']
+                    }
+
+                    modal_gerar_pdf(dados_venda_pdf)
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
 elif menu == "Estoque Organizado":
@@ -572,7 +600,7 @@ elif menu == "Consultar Garantia":
 
         st.dataframe(pd.DataFrame(resultados), use_container_width=True, hide_index=True)
 
-# --- ABA 5: HISTÓRICO DE VENDAS COM GERADOR DE PDF E CANCELAMENTO ---
+# --- ABA 5: HISTÓRICO DE VENDAS ---
 elif menu == "Histórico":
     st.header("Histórico Geral de Vendas")
     conn = conectar()
@@ -587,7 +615,7 @@ elif menu == "Histórico":
             with st.container():
                 col_i, col_d, col_v, col_btn, col_del = st.columns([1, 2.5, 2, 2, 2])
                 col_i.write(f"**Nº #{row['id']}**")
-                col_d.write(f"**Data:** {row['data_hora']}<br/>**Cliente:** {row['cliente_nome']}", unsafe_allow_html=True)
+                col_d.write(f"**Data:** {row['data_hora']}<br/>**Cliente:** {row['cliente_nome']}<br/>**Vendedor:** {row['vendedor']}", unsafe_allow_html=True)
                 col_v.write(f"**Produto:** {row['produto_nome']}<br/>**Total:** R$ {row['valor_total']:.2f}", unsafe_allow_html=True)
                 
                 dados_v = {
@@ -622,12 +650,10 @@ elif menu == "Histórico":
                 else:
                     col_btn.caption("⚠️ Requer ReportLab")
 
-                # Botão de Cancelamento / Estorno (apenas para ADM ou no Histórico)
+                # Botão de Cancelamento com Pop-up (Apenas ADM)
                 if st.session_state["perfil"] == "ADM":
-                    if col_del.button("🔴 Cancelar Venda", key=f"btn_del_{row['id']}"):
-                        cancelar_venda(row['id'], row['produto_nome'], row['quantidade'])
-                        st.toast(f"Venda #{row['id']} cancelada e item devolvido ao estoque!", icon="✅")
-                        st.rerun()
+                    if col_del.button("🔴 Cancelar", key=f"btn_del_{row['id']}"):
+                        modal_confirmar_cancelamento(row['id'], row['produto_nome'], row['quantidade'])
 
                 st.write("---")
 
