@@ -60,7 +60,7 @@ USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
     "sandro": {"senha": "1234", "perfil": "ADM", "nome": "Sandro"},
     "pedro": {"senha": "Pedro1234", "perfil": "Vendedor", "nome": "Pedro"},
-    "anderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Anderson"},
+    "wanderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Wanderson"},
 }
 
 def conectar():
@@ -275,8 +275,8 @@ if "logado" not in st.session_state:
     st.session_state["vendedor_nome"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=300)
+    if os.path.exists("log.png"):
+        st.image("go.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
         
