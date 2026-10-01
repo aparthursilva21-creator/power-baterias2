@@ -55,7 +55,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Usuários do Sistema (Wanderson corrigido com W)
+# Usuários do Sistema
 USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
     "sandro": {"senha": "1234", "perfil": "ADM", "nome": "Sandro"},
@@ -117,22 +117,38 @@ def inicializar_banco():
     """)
     conn.commit()
 
+    # Carga Inicial Completa com todas as marcas para todas as categorias
     cursor.execute("SELECT COUNT(*) FROM produtos")
     if cursor.fetchone()[0] == 0:
-        catalogo_exato = [
+        catalogo_completo = [
+            # 36 a 48 Ah
             ("36/40/45/48 Ah", "Heliar 48Ah", 48, "Heliar", 550.00, 10, 24, "Gol, Palio, Uno"),
             ("36/40/45/48 Ah", "Moura 48Ah", 48, "Moura", 550.00, 10, 24, "Gol, Palio, Uno"),
             ("36/40/45/48 Ah", "Cral 45Ah", 45, "Cral", 420.00, 10, 24, "Celta, Ka, Fit"),
             ("36/40/45/48 Ah", "KF 40Ah", 40, "KF", 250.00, 10, 12, "Motos / Veículos Leves"),
             ("36/40/45/48 Ah", "Super Life 36Ah", 36, "Super Life", 220.00, 10, 12, "Veículos Populares"),
+            
+            # 50 Ah Caixa Alta
             ("50 Ah Caixa Alta", "Heliar 50Ah Caixa Alta", 50, "Heliar", 550.00, 10, 24, "Fiesta, EcoSport, Ka"),
+            ("50 Ah Caixa Alta", "Moura 50Ah Caixa Alta", 50, "Moura", 550.00, 10, 24, "Fiesta, EcoSport, Ka"),
+            ("50 Ah Caixa Alta", "Cral 50Ah Caixa Alta", 50, "Cral", 430.00, 10, 18, "Fiesta, EcoSport, Ka"),
+
+            # 60 Ah Padrão (COMPLETO)
             ("60 Ah Padrão", "Heliar 60Ah", 60, "Heliar", 550.00, 10, 24, "Civic, Corolla, Onix, HB20, Fox"),
+            ("60 Ah Padrão", "Moura 60Ah", 60, "Moura", 550.00, 10, 24, "Civic, Corolla, Onix, HB20, Fox"),
+            ("60 Ah Padrão", "Cral 60Ah", 60, "Cral", 450.00, 10, 18, "Civic, Corolla, Onix, HB20, Fox"),
+            ("60 Ah Padrão", "ACDelco 60Ah", 60, "ACDelco", 480.00, 10, 18, "Onix, Prisma, Spin, Cobalt"),
+            ("60 Ah Padrão", "KF 60Ah", 60, "KF", 320.00, 10, 12, "Veículos Leves e Médios"),
+
+            # 70 Ah (COMPLETO)
             ("70 Ah", "Heliar 70Ah", 70, "Heliar", 760.00, 10, 24, "SUVs, Pickups, Compass, Renegade"),
+            ("70 Ah", "Moura 70Ah", 70, "Moura", 760.00, 10, 24, "SUVs, Pickups, Compass, Renegade"),
+            ("70 Ah", "Cral 70Ah", 70, "Cral", 620.00, 10, 18, "SUVs, Pickups, Compass, Renegade"),
         ]
         cursor.executemany("""
             INSERT INTO produtos (categoria, nome, amperagem, marca, preco, quantidade, meses_garantia, veiculo)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, catalogo_exato)
+        """, catalogo_completo)
         conn.commit()
 
     conn.close()
@@ -303,7 +319,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("lgo.png"):
+    if os.path.exists("logo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -396,7 +412,7 @@ else:
 
 st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
 
-# Informações de Utilizador e Desempenho apenas em Texto do Menu Lateral
+# Informações de Utilizador e Desempenho
 vendedor_atual = st.session_state['vendedor_nome']
 un_vendedor, total_loja, pct_desempenho = calcular_desempenho_vendedor(vendedor_atual)
 
