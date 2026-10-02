@@ -72,6 +72,16 @@ USUARIOS = {
     "wanderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Wanderson"},
 }
 
+CATEGORIAS_PADRAO = [
+    "36Ah 40Ah 45Ah 48Ah",
+    "60Ah",
+    "70Ah",
+    "75Ah",
+    "40Ah Slim JD",
+    "72Ah EFB Start Stop",
+    "90Ah"
+]
+
 def gerador_pdf_nota(dados):
     if not REPORTLAB_DISPONIVEL:
         return None
@@ -170,7 +180,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("logo.png"):
+    if os.path.exists("loo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -235,7 +245,8 @@ if menu == "Nova Venda":
     if df_prods.empty:
         st.warning("Nenhuma bateria cadastrada no estoque!")
     else:
-        opcoes_prods = [""] + [f"ID {row['id']} | [{row.get('categoria', 'Geral')}] {row['nome']} - R$ {float(row['preco']):.2f} (Estoque: {int(row['quantidade'])})" for _, row in df_prods.iterrows()]
+        # Formato limpo sem exibir a categoria na lista de seleção
+        opcoes_prods = [""] + [f"ID {row['id']} | {row['nome']} - R$ {float(row['preco']):.2f} (Estoque: {int(row['quantidade'])})" for _, row in df_prods.iterrows()]
         prod_sel_str = st.selectbox("Selecione a Bateria", opcoes_prods, index=0)
         
         if prod_sel_str != "":
@@ -334,7 +345,7 @@ elif menu == "Consultar Garantia":
         else:
             st.info("Nenhum registro encontrado.")
 
-# --- ABA 4: EDITAR BATERIAS ---
+# --- ABA 4: EDITAR BATERIAS (SELEÇÃO DE CATEGORIA VIA DROPDOWN) ---
 elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     st.header("Editar ou Excluir Baterias")
     res = supabase.table("produtos").select("*").order("id").execute()
@@ -343,15 +354,28 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     if df_prods.empty:
         st.info("Nenhuma bateria cadastrada.")
     else:
-        opcoes = ["-- Selecione --"] + [f"ID {row['id']} - [{row.get('categoria', 'Geral')}] {row['nome']}" for _, row in df_prods.iterrows()]
+        opcoes = ["-- Selecione --"] + [f"ID {row['id']} - {row['nome']}" for _, row in df_prods.iterrows()]
         sel = st.selectbox("Escolha a bateria para editar:", opcoes)
         
         if sel != "-- Selecione --":
             id_sel = int(sel.split(" ")[1])
             item = df_prods[df_prods['id'] == id_sel].iloc[0]
 
+            # Lista de categorias existentes para seleção
+            cats_banco = sorted(df_prods['categoria'].dropna().unique().tolist())
+            lista_cats = list(set(CATEGORIAS_PADRAO + cats_banco))
+            
+            cat_atual = str(item.get('categoria', '60Ah'))
+            idx_cat = lista_cats.index(cat_atual) if cat_atual in lista_cats else 0
+
             col_cat, col_nome = st.columns(2)
-            e_categoria = col_cat.text_input("Categoria", value=str(item.get('categoria', 'Geral')))
+            e_categoria_sel = col_cat.selectbox("Categoria", lista_cats + ["+ Outra Categoria"], index=idx_cat)
+            
+            if e_categoria_sel == "+ Outra Categoria":
+                e_categoria = col_cat.text_input("Digite a Nova Categoria")
+            else:
+                e_categoria = e_categoria_sel
+
             e_nome = col_nome.text_input("Nome do Modelo", value=item['nome'])
 
             col1, col2, col3 = st.columns(3)
@@ -382,30 +406,62 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
                 st.toast("Bateria excluída!", icon="🗑️")
                 st.rerun()
 
-# --- ABA 5: HISTÓRICO ---
+# --- ABA 5: HISTÓRICO COM GERAR PDF E CANCELAR VENDA ---
 elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
     st.header("Histórico de Vendas")
     res = supabase.table("vendas").select("*").order("id", desc=True).execute()
     df_hist = pd.DataFrame(res.data)
     
     if df_hist.empty:
-        st.info("Nenhuma venda registrada.")
+        st.info("Nenhuma venda registrada no histórico.")
     else:
-        st.dataframe(df_hist[['id', 'data_hora', 'vendedor', 'produto_nome', 'quantidade', 'valor_total', 'forma_pagamento', 'cliente_nome']], use_container_width=True, hide_index=True)
+        # Botão para limpar/resetar o histórico se necessário
+        if st.button("🗑️ Limpar Todo Histórico de Vendas (Modo Teste)"):
+            supabase.table("vendas").delete().neq("id", 0).execute()
+            st.success("Histórico zerado com sucesso!")
+            st.rerun()
+
+        st.write("---")
+        
+        for _, v in df_hist.iterrows():
+            c1, c2, c3, c4, c5, c6 = st.columns([1, 2.5, 2, 1.5, 1.5, 1.5])
+            c1.write(f"**#{v['id']}**")
+            c2.write(f"**{v['cliente_nome']}**<br/>{v['produto_nome']}", unsafe_allow_html=True)
+            c3.write(f"Data: {v['data_hora']}<br/>Placa: {v.get('veiculo_placa', 'N/A')}", unsafe_allow_html=True)
+            c4.write(f"R$ {float(v['valor_total']):.2f}<br/>{v['forma_pagamento']}", unsafe_allow_html=True)
+            
+            if c5.button("📄 PDF", key=f"pdf_{v['id']}"):
+                modal_gerar_pdf(dict(v))
+                
+            if c6.button("🔴 Cancelar", key=f"canc_{v['id']}"):
+                cancelar_venda(v['id'], v['produto_nome'], int(v['quantidade']))
+                st.toast(f"Venda #{v['id']} cancelada e item retornado ao estoque!", icon="✅")
+                st.rerun()
+            st.divider()
 
 # --- ABA 6: PAINEL ADM ---
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
     st.header("Cadastrar Nova Bateria")
     with st.form("cad_manual"):
-        f_cat = st.text_input("Categoria (ex: 70Ah, 60Ah, 40Ah Slim JD...)", value="60Ah")
-        f_nome = st.text_input("Nome do Modelo")
-        f_amp = st.number_input("Amperagem", value=60)
-        f_marca = st.text_input("Marca", value="Heliar")
-        f_preco = st.number_input("Preço (R$)", value=400.0)
-        f_qtd = st.number_input("Estoque Inicial", value=10)
-        f_garantia = st.number_input("Meses de Garantia", value=12)
+        col_cat, col_nome = st.columns(2)
+        f_cat_sel = col_cat.selectbox("Categoria", CATEGORIAS_PADRAO + ["+ Outra Categoria"])
+        if f_cat_sel == "+ Outra Categoria":
+            f_cat = col_cat.text_input("Digite a Nova Categoria")
+        else:
+            f_cat = f_cat_sel
+
+        f_nome = col_nome.text_input("Nome do Modelo")
         
-        if st.form_submit_button("Cadastrar Bateria"):
+        col1, col2, col3 = st.columns(3)
+        f_amp = col1.number_input("Amperagem", value=60)
+        f_marca = col2.text_input("Marca", value="Heliar")
+        f_preco = col3.number_input("Preço (R$)", value=400.0)
+        
+        col4, col5 = st.columns(2)
+        f_qtd = col4.number_input("Estoque Inicial", value=10)
+        f_garantia = col5.number_input("Meses de Garantia", value=12)
+        
+        if st.form_submit_button("Cadastrar Bateria", use_container_width=True):
             novo_prod = {
                 "categoria": f_cat.strip(),
                 "nome": f_nome.strip(),
@@ -416,5 +472,5 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
                 "meses_garantia": int(f_garantia)
             }
             supabase.table("produtos").insert(novo_prod).execute()
-            st.success("Bateria cadastrada no Supabase!")
+            st.success("Bateria cadastrada no Supabase com sucesso!")
             st.rerun()
