@@ -65,57 +65,6 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- LISTA OFICIAL ORGANIZADA POR CATEGORIA ---
-BATERIAS_OFICIAIS = [
-    # Categoria: 36Ah 40Ah 45Ah 48Ah
-    {"categoria": "36Ah 40Ah 45Ah 48Ah", "nome": "Heliar 48Ah", "marca": "Heliar", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "36Ah 40Ah 45Ah 48Ah", "nome": "Moura 48Ah", "marca": "Moura", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "36Ah 40Ah 45Ah 48Ah", "nome": "Cral 45Ah", "marca": "Cral", "amperagem": 45, "preco": 420.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "36Ah 40Ah 45Ah 48Ah", "nome": "KF 40Ah", "marca": "KF", "amperagem": 40, "preco": 250.00, "quantidade": 10, "meses_garantia": 12},
-    {"categoria": "36Ah 40Ah 45Ah 48Ah", "nome": "Super Life 36Ah", "marca": "Super Life", "amperagem": 36, "preco": 220.00, "quantidade": 10, "meses_garantia": 12},
-
-    # Categoria: 70Ah
-    {"categoria": "70Ah", "nome": "Heliar 70Ah", "marca": "Heliar", "amperagem": 70, "preco": 760.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "70Ah", "nome": "Moura 70Ah", "marca": "Moura", "amperagem": 70, "preco": 760.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "70Ah", "nome": "América 70Ah", "marca": "América", "amperagem": 70, "preco": 590.00, "quantidade": 10, "meses_garantia": 18},
-    {"categoria": "70Ah", "nome": "Cral 70Ah", "marca": "Cral", "amperagem": 70, "preco": 580.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "70Ah", "nome": "Super Life 70Ah", "marca": "Super Life", "amperagem": 70, "preco": 390.00, "quantidade": 10, "meses_garantia": 12},
-
-    # Categoria: 75Ah
-    {"categoria": "75Ah", "nome": "Heliar 75Ah", "marca": "Heliar", "amperagem": 75, "preco": 790.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "75Ah", "nome": "Moura 75Ah", "marca": "Moura", "amperagem": 75, "preco": 790.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "75Ah", "nome": "Cral 75Ah", "marca": "Cral", "amperagem": 75, "preco": 580.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "75Ah", "nome": "KF 75Ah", "marca": "KF", "amperagem": 75, "preco": 490.00, "quantidade": 10, "meses_garantia": 12},
-
-    # Categoria: 40Ah Slim JD (duplicados removidos)
-    {"categoria": "40Ah Slim JD", "nome": "Heliar 40JD", "marca": "Heliar", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "40Ah Slim JD", "nome": "Moura 40JD", "marca": "Moura", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "40Ah Slim JD", "nome": "Cral 40JD", "marca": "Cral", "amperagem": 40, "preco": 420.00, "quantidade": 10, "meses_garantia": 18},
-    {"categoria": "40Ah Slim JD", "nome": "KF 40JD", "marca": "KF", "amperagem": 40, "preco": 350.00, "quantidade": 10, "meses_garantia": 12},
-
-    # Categoria: 72Ah EFB Start Stop
-    {"categoria": "72Ah EFB Start Stop", "nome": "Heliar 72Ah Start Stop", "marca": "Heliar", "amperagem": 72, "preco": 1150.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "72Ah EFB Start Stop", "nome": "Moura 72Ah Start Stop", "marca": "Moura", "amperagem": 72, "preco": 1150.00, "quantidade": 10, "meses_garantia": 24},
-
-    # Categoria: 90Ah
-    {"categoria": "90Ah", "nome": "Heliar 90Ah", "marca": "Heliar", "amperagem": 90, "preco": 970.00, "quantidade": 10, "meses_garantia": 15},
-    {"categoria": "90Ah", "nome": "Moura 90Ah", "marca": "Moura", "amperagem": 90, "preco": 970.00, "quantidade": 10, "meses_garantia": 12},
-    {"categoria": "90Ah", "nome": "Cral 90Ah", "marca": "Cral", "amperagem": 90, "preco": 690.00, "quantidade": 10, "meses_garantia": 15},
-    {"categoria": "90Ah", "nome": "Biachine 90Ah", "marca": "Biachine", "amperagem": 90, "preco": 590.00, "quantidade": 10, "meses_garantia": 12},
-
-    # Categoria: 60Ah
-    {"categoria": "60Ah", "nome": "Heliar 60Ah", "marca": "Heliar", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "60Ah", "nome": "Moura 60Ah", "marca": "Moura", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "60Ah", "nome": "América 60Ah", "marca": "América", "amperagem": 60, "preco": 450.00, "quantidade": 10, "meses_garantia": 18},
-    {"categoria": "60Ah", "nome": "Cral 60Ah", "marca": "Cral", "amperagem": 60, "preco": 430.00, "quantidade": 10, "meses_garantia": 24},
-    {"categoria": "60Ah", "nome": "KF 60Ah", "marca": "KF", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
-    {"categoria": "60Ah", "nome": "Super Life 60Ah", "marca": "Super Life", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
-]
-
-def recarregar_estoque_completo():
-    supabase.table("produtos").delete().neq("id", 0).execute()
-    supabase.table("produtos").insert(BATERIAS_OFICIAIS).execute()
-
 USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
     "sandro": {"senha": "1234", "perfil": "ADM", "nome": "Sandro"},
@@ -221,7 +170,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("lgo.png"):
+    if os.path.exists("logo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -284,7 +233,7 @@ if menu == "Nova Venda":
     df_prods = pd.DataFrame(res.data)
 
     if df_prods.empty:
-        st.warning("Nenhuma bateria no estoque! Acesse o Painel ADM para sincronizar a lista.")
+        st.warning("Nenhuma bateria cadastrada no estoque!")
     else:
         opcoes_prods = [""] + [f"ID {row['id']} | [{row.get('categoria', 'Geral')}] {row['nome']} - R$ {float(row['preco']):.2f} (Estoque: {int(row['quantidade'])})" for _, row in df_prods.iterrows()]
         prod_sel_str = st.selectbox("Selecione a Bateria", opcoes_prods, index=0)
@@ -345,7 +294,7 @@ if menu == "Nova Venda":
 
                         modal_gerar_pdf({'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_preco, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
 
-# --- ABA 2: ESTOQUE ORGANIZADO POR CATEGORIA ---
+# --- ABA 2: ESTOQUE ORGANIZADO EM TABELAS SEPARADAS ---
 elif menu == "Estoque Organizado":
     st.header("Estoque Geral por Categoria")
     res = supabase.table("produtos").select("id, categoria, nome, marca, amperagem, preco, quantidade, meses_garantia").order("categoria").order("id").execute()
@@ -354,17 +303,18 @@ elif menu == "Estoque Organizado":
     if not df_estoque.empty:
         df_estoque.columns = ['ID', 'Categoria', 'Modelo', 'Marca', 'Amperagem (Ah)', 'Preço (R$)', 'Estoque', 'Garantia (Meses)']
         
-        cats = ["Todas"] + sorted(df_estoque['Categoria'].unique().tolist())
-        cat_filtro = st.selectbox("Filtrar por Categoria", cats)
+        categorias_existentes = sorted(df_estoque['Categoria'].dropna().unique().tolist())
+        cat_filtro = st.selectbox("Filtrar por Categoria", ["Todas"] + categorias_existentes)
         
-        if cat_filtro != "Todas":
-            df_exibir = df_estoque[df_estoque['Categoria'] == cat_filtro]
-        else:
-            df_exibir = df_estoque
+        cats_para_exibir = categorias_existentes if cat_filtro == "Todas" else [cat_filtro]
 
-        st.dataframe(df_exibir, use_container_width=True, hide_index=True)
+        for cat in cats_para_exibir:
+            st.markdown(f"### 🔋 Categoria: {cat}")
+            df_cat = df_estoque[df_estoque['Categoria'] == cat].drop(columns=['Categoria'])
+            st.dataframe(df_cat, use_container_width=True, hide_index=True)
+            st.write("")
     else:
-        st.info("Nenhuma bateria no estoque. Entre no Painel ADM e clique em 'Sincronizar Lista Oficial de Baterias'.")
+        st.info("Nenhuma bateria cadastrada no estoque.")
 
 # --- ABA 3: CONSULTAR GARANTIA ---
 elif menu == "Consultar Garantia":
@@ -445,15 +395,7 @@ elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
 
 # --- ABA 6: PAINEL ADM ---
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
-    st.header("Sincronização do Estoque")
-    st.warning("Atenção: Ao clicar no botão abaixo, a tabela de produtos será limpa e recarregada com todas as categorias organizadas.")
-    if st.button("🔄 Sincronizar Lista Oficial de Baterias (Reset do Estoque)", use_container_width=True):
-        recarregar_estoque_completo()
-        st.success("Estoque recarregado com todas as categorias corretas!")
-        st.rerun()
-
-    st.write("---")
-    st.header("Cadastrar Bateria Individual")
+    st.header("Cadastrar Nova Bateria")
     with st.form("cad_manual"):
         f_cat = st.text_input("Categoria (ex: 70Ah, 60Ah, 40Ah Slim JD...)", value="60Ah")
         f_nome = st.text_input("Nome do Modelo")
