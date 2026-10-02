@@ -53,7 +53,6 @@ st.markdown("""
         background-color: #16191e !important;
         border-right: 1px solid #28a745;
     }
-    /* Ajustes Finos para Telas de Celular (Mobile) */
     @media (max-width: 768px) {
         .stApp {
             padding: 5px !important;
@@ -175,9 +174,13 @@ def gerador_pdf_nota(dados):
     story.append(t_prod)
     story.append(Spacer(1, 10))
 
+    forma_pgto_str = dados.get('forma_pagamento', '')
+    if forma_pgto_str == "Cartão de Crédito" and dados.get('parcelas'):
+        forma_pgto_str += f" ({dados.get('parcelas')})"
+
     pag_info = [
         [
-            Paragraph(f"<b>Forma de Pagamento:</b> {dados.get('forma_pagamento', '')} ({dados.get('parcelas', '1x')})", body_style),
+            Paragraph(f"<b>Forma de Pagamento:</b> {forma_pgto_str}", body_style),
             Paragraph(f"<b>VALOR TOTAL: R$ {dados.get('valor_total', 0.0):.2f}</b>", ParagraphStyle('Tot', parent=body_bold, fontSize=11, alignment=2))
         ]
     ]
@@ -219,12 +222,16 @@ def gerador_pdf_caixa(data_ref, df_vendas, total_faturado):
     table_data = [[Paragraph("<b>ID</b>", body_bold), Paragraph("<b>Vendedor</b>", body_bold), Paragraph("<b>Cliente</b>", body_bold), Paragraph("<b>Produto</b>", body_bold), Paragraph("<b>Pagamento</b>", body_bold), Paragraph("<b>Total</b>", body_bold)]]
     
     for _, r in df_vendas.iterrows():
+        pgto_texto = str(r['forma_pagamento'])
+        if pgto_texto == "Cartão de Crédito" and r.get('parcelas'):
+            pgto_texto += f" ({r['parcelas']})"
+
         table_data.append([
             Paragraph(str(r['id']), body_style),
             Paragraph(str(r['vendedor']), body_style),
             Paragraph(str(r['cliente_nome']), body_style),
             Paragraph(str(r['produto_nome']), body_style),
-            Paragraph(str(r['forma_pagamento']), body_style),
+            Paragraph(pgto_texto, body_style),
             Paragraph(f"R$ {float(r['valor_total']):.2f}", body_style)
         ])
 
@@ -256,7 +263,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("lgo.png"):
+    if os.path.exists("loo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -308,7 +315,7 @@ def modal_confirmar_exclusao_bateria(id_sel, nome_bateria):
     st.error(f"Deseja realmente excluir a bateria ID {id_sel} - {nome_bateria}?")
     if st.button("Sim, Excluir Bateria", use_container_width=True):
         supabase.table("produtos").delete().eq("id", id_sel).execute()
-        st.toast("Bateria excluída!", icon="🗑️️")
+        st.toast("Bateria excluída!", icon="🗑")
         st.rerun()
 
 @st.dialog("Confirmar Cancelamento de Venda 🔴")
@@ -331,10 +338,19 @@ def modal_editar_venda(venda_dict):
     e_placa = st.text_input("Placa", value=str(venda_dict.get('veiculo_placa', '')))
     e_serie = st.text_input("Nº Série", value=str(venda_dict.get('numero_serie', '')))
     
-    col_a, col_b = st.columns(2)
+    col_a, col_b, col_c = st.columns(3)
     e_total = col_a.number_input("Valor Total (R$)", value=float(venda_dict.get('valor_total', 0.0)))
-    e_pag = col_b.selectbox("Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"], index=["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"].index(venda_dict.get('forma_pagamento', 'PIX')))
     
+    pgto_atual = venda_dict.get('forma_pagamento', 'PIX')
+    e_pag = col_b.selectbox("Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"], index=["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"].index(pgto_atual) if pgto_atual in ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"] else 0)
+    
+    e_parcelas = "1x"
+    if e_pag == "Cartão de Crédito":
+        parc_lista = [f"{i}x" for i in range(1, 13)]
+        parc_atual = venda_dict.get('parcelas', '1x')
+        idx_p = parc_lista.index(parc_atual) if parc_atual in parc_lista else 0
+        e_parcelas = col_c.selectbox("Parcelas", parc_lista, index=idx_p)
+
     if st.button("Salvar Edição da Venda", use_container_width=True):
         payload = {
             "cliente_nome": e_cliente,
@@ -343,7 +359,8 @@ def modal_editar_venda(venda_dict):
             "veiculo_placa": e_placa.upper(),
             "numero_serie": e_serie.upper(),
             "valor_total": float(e_total),
-            "forma_pagamento": e_pag
+            "forma_pagamento": e_pag,
+            "parcelas": e_parcelas
         }
         supabase.table("vendas").update(payload).eq("id", venda_id).execute()
         st.toast("Venda atualizada com sucesso!", icon="✅")
@@ -397,7 +414,6 @@ if menu == "Nova Venda":
                     preco_tabela_total = preco_base * qtd
                     st.info(f"Preço Tabela (Unidade): R$ {preco_base:.2f}")
                     
-                    # Permite digitar o valor final praticado na venda
                     valor_final = st.number_input("Valor Final Praticado (R$) *", value=float(preco_tabela_total), step=5.0)
                     ajuste_desconto = preco_tabela_total - valor_final
                     
@@ -408,7 +424,7 @@ if menu == "Nova Venda":
 
                     vendedor = st.text_input("Vendedor *", value=st.session_state.get("vendedor_nome", ""))
                     pagamento = st.selectbox("Pagamento *", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
-                    parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
+                    parcelas = st.selectbox("Em quantas vezes?", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
                 
                 with col2:
                     cliente = st.text_input("Cliente")
@@ -417,17 +433,26 @@ if menu == "Nova Venda":
                     placa = st.text_input("Placa")
                     serie = st.text_input("Nº Série Bateria")
 
+                # --- OPÇÃO EXCLUSIVA DE ADM: ALTERAR DATA DA VENDA ---
+                dt_venda_final = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                if st.session_state.get("perfil") == "ADM":
+                    st.write("---")
+                    alterar_data = st.checkbox("Deseja alterar a data/hora da venda? (Exclusivo ADM)")
+                    if alterar_data:
+                        col_dt1, col_dt2 = st.columns(2)
+                        data_custom = col_dt1.date_input("Data da Venda", datetime.now())
+                        hora_custom = col_dt2.time_input("Hora da Venda", datetime.now().time())
+                        dt_venda_final = f"{data_custom.strftime('%d/%m/%Y')} {hora_custom.strftime('%H:%M:%S')}"
+
                 if st.form_submit_button("Concluir Venda", use_container_width=True):
                     if not vendedor.strip() or not veiculo_mod.strip():
                         st.error("Preencha Vendedor e Veículo!")
                     else:
-                        dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                        
                         nova_qtd = int(dados_p['quantidade']) - qtd
                         supabase.table("produtos").update({"quantidade": nova_qtd}).eq("id", id_prod).execute()
                         
                         venda_payload = {
-                            "data_hora": dt_hoje,
+                            "data_hora": dt_venda_final,
                             "vendedor": vendedor.strip(),
                             "produto_nome": dados_p['nome'],
                             "quantidade": int(qtd),
@@ -447,7 +472,7 @@ if menu == "Nova Venda":
                         insert_res = supabase.table("vendas").insert(venda_payload).execute()
                         id_venda = insert_res.data[0]['id'] if insert_res.data else 0
 
-                        modal_gerar_pdf({'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_desconto, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
+                        modal_gerar_pdf({'id': id_venda, 'data_hora': dt_venda_final, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_desconto, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
 elif menu == "Estoque Organizado":
@@ -499,7 +524,7 @@ elif menu == "Consultar Garantia":
             meses_gar = int(r.get('meses_garantia', 12) or 12)
             
             try:
-                dt_venda = datetime.strptime(dt_venda_str, "%d/%m/%Y %H:%M:%S")
+                dt_venda = datetime.strptime(dt_venda_str.split()[0], "%d/%m/%Y")
                 meses_passados = (datetime.now().year - dt_venda.year) * 12 + (datetime.now().month - dt_venda.month)
                 meses_restantes = meses_gar - meses_passados
                 
@@ -520,8 +545,12 @@ elif menu == "Consultar Garantia":
                 col_b.write(f"**Veículo / Placa:** {r['veiculo_modelo']} - {r['veiculo_placa']}")
                 col_b.write(f"**Nº Série Bateria:** {r['numero_serie']}")
 
+                pgto_detalhado = r['forma_pagamento']
+                if pgto_detalhado == "Cartão de Crédito" and r.get('parcelas'):
+                    pgto_detalhado += f" ({r['parcelas']})"
+
                 col_c.write(f"**Bateria:** {r['produto_nome']}")
-                col_c.write(f"**Garantia Total:** {meses_gar} meses")
+                col_c.write(f"**Forma Pagamento:** {pgto_detalhado}")
                 col_c.write(f"**Status:** {status_garantia}")
 
 # --- ABA 4: EDITAR BATERIAS ---
@@ -579,7 +608,7 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
             if col_btn2.button("Excluir Bateria 🔴", use_container_width=True):
                 modal_confirmar_exclusao_bateria(id_sel, e_nome)
 
-# --- ABA 5: HISTÓRICO COM BOTÃO EDITAR VENDA PARA ADM ---
+# --- ABA 5: HISTÓRICO COM EDITAR VENDA ---
 elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
     st.header("Histórico de Vendas")
     res = supabase.table("vendas").select("*").order("id", desc=True).execute()
@@ -593,12 +622,17 @@ elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
             c1.write(f"**#{v['id']}**")
             c2.write(f"**{v['cliente_nome']}**<br/>{v['produto_nome']}", unsafe_allow_html=True)
             c3.write(f"Data: {v['data_hora']}<br/>Placa: {v.get('veiculo_placa', 'N/A')}", unsafe_allow_html=True)
-            c4.write(f"R$ {float(v['valor_total']):.2f}<br/>{v['forma_pagamento']}", unsafe_allow_html=True)
+            
+            forma_pgto_txt = v['forma_pagamento']
+            if forma_pgto_txt == "Cartão de Crédito" and v.get('parcelas'):
+                forma_pgto_txt += f" ({v['parcelas']})"
+
+            c4.write(f"R$ {float(v['valor_total']):.2f}<br/>{forma_pgto_txt}", unsafe_allow_html=True)
             
             if c5.button("📄 PDF", key=f"pdf_{v['id']}"):
                 modal_gerar_pdf(dict(v))
                 
-            if c6.button("✏️ Editar", key=f"edit_v_{v['id']}"):
+            if c6.button("✏️️ Editar", key=f"edit_v_{v['id']}"):
                 modal_editar_venda(dict(v))
 
             if c7.button("🔴 Cancelar", key=f"canc_{v['id']}"):
@@ -647,7 +681,12 @@ elif menu == "Caixa Diário" and st.session_state["perfil"] == "ADM":
 
         st.write("---")
         st.subheader("Detalhamento das Vendas do Dia")
-        st.dataframe(df_hoje[['id', 'data_hora', 'vendedor', 'cliente_nome', 'produto_nome', 'forma_pagamento', 'valor_total']], use_container_width=True, hide_index=True)
+        
+        df_exib_caixa = df_hoje.copy()
+        df_exib_caixa['Forma Pagamento'] = df_exib_caixa.apply(
+            lambda row: f"{row['forma_pagamento']} ({row['parcelas']})" if row['forma_pagamento'] == "Cartão de Crédito" and row.get('parcelas') else row['forma_pagamento'], axis=1
+        )
+        st.dataframe(df_exib_caixa[['id', 'data_hora', 'vendedor', 'cliente_nome', 'produto_nome', 'Forma Pagamento', 'valor_total']], use_container_width=True, hide_index=True)
 
         if REPORTLAB_DISPONIVEL:
             pdf_caixa = gerador_pdf_caixa(data_str, df_hoje, total_dia)
