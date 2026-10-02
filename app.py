@@ -65,18 +65,26 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO PARA POPULAR O ESTOQUE INICIAL CASO ESTEJA VAZIO ---
+# --- FUNÇÃO PARA POPULAR O ESTOQUE INICIAL COM NOVAS CATEGORIAS ---
 def popular_baterias_iniciais():
     try:
         res = supabase.table("produtos").select("id").limit(1).execute()
         if not res.data:
             lista_inicial = [
-                # 36Ah - 48Ah
-                {"categoria": "36Ah - 48Ah", "nome": "Heliar 48Ah", "marca": "Heliar", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "36Ah - 48Ah", "nome": "Moura 48Ah", "marca": "Moura", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "36Ah - 48Ah", "nome": "Cral 45Ah", "marca": "Cral", "amperagem": 45, "preco": 420.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "36Ah - 48Ah", "nome": "KF 40Ah", "marca": "KF", "amperagem": 40, "preco": 250.00, "quantidade": 10, "meses_garantia": 12},
-                {"categoria": "36Ah - 48Ah", "nome": "Super Life 36Ah", "marca": "Super Life", "amperagem": 36, "preco": 220.00, "quantidade": 10, "meses_garantia": 12},
+                # 36Ah a 48Ah
+                {"categoria": "36Ah a 48Ah", "nome": "Heliar 48Ah", "marca": "Heliar", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "36Ah a 48Ah", "nome": "Moura 48Ah", "marca": "Moura", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "36Ah a 48Ah", "nome": "Cral 45Ah", "marca": "Cral", "amperagem": 45, "preco": 420.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "36Ah a 48Ah", "nome": "KF 40Ah", "marca": "KF", "amperagem": 40, "preco": 250.00, "quantidade": 10, "meses_garantia": 12},
+                {"categoria": "36Ah a 48Ah", "nome": "Super Life 36Ah", "marca": "Super Life", "amperagem": 36, "preco": 220.00, "quantidade": 10, "meses_garantia": 12},
+
+                # 60Ah A / B
+                {"categoria": "60Ah A", "nome": "Heliar 60Ah", "marca": "Heliar", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "60Ah A", "nome": "Moura 60Ah", "marca": "Moura", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "60Ah B", "nome": "América 60Ah", "marca": "América", "amperagem": 60, "preco": 450.00, "quantidade": 10, "meses_garantia": 18},
+                {"categoria": "60Ah B", "nome": "Cral 60Ah", "marca": "Cral", "amperagem": 60, "preco": 430.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "60Ah B", "nome": "KF 60Ah", "marca": "KF", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
+                {"categoria": "60Ah B", "nome": "Super Life 60Ah", "marca": "Super Life", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
 
                 # 70Ah
                 {"categoria": "70Ah", "nome": "Heliar 70Ah", "marca": "Heliar", "amperagem": 70, "preco": 760.00, "quantidade": 10, "meses_garantia": 24},
@@ -91,13 +99,13 @@ def popular_baterias_iniciais():
                 {"categoria": "75Ah", "nome": "Cral 75Ah", "marca": "Cral", "amperagem": 75, "preco": 580.00, "quantidade": 10, "meses_garantia": 24},
                 {"categoria": "75Ah", "nome": "KF 75Ah", "marca": "KF", "amperagem": 75, "preco": 490.00, "quantidade": 10, "meses_garantia": 12},
 
-                # 40Ah Slim JD
-                {"categoria": "40Slim JD", "nome": "Heliar 40 Slim JD", "marca": "Heliar", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "40Slim JD", "nome": "Moura 40 Slim JD", "marca": "Moura", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "40Slim JD", "nome": "Cral 40 Slim JD", "marca": "Cral", "amperagem": 40, "preco": 420.00, "quantidade": 10, "meses_garantia": 18},
-                {"categoria": "40Slim JD", "nome": "KF 40 Slim JD", "marca": "KF", "amperagem": 40, "preco": 350.00, "quantidade": 10, "meses_garantia": 12},
+                # 40Ah JD Slim
+                {"categoria": "40Ah JD Slim", "nome": "Heliar 40 Slim JD", "marca": "Heliar", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "40Ah JD Slim", "nome": "Moura 40 Slim JD", "marca": "Moura", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "40Ah JD Slim", "nome": "Cral 40 Slim JD", "marca": "Cral", "amperagem": 40, "preco": 420.00, "quantidade": 10, "meses_garantia": 18},
+                {"categoria": "40Ah JD Slim", "nome": "KF 40 Slim JD", "marca": "KF", "amperagem": 40, "preco": 350.00, "quantidade": 10, "meses_garantia": 12},
 
-                # 72Ah EFB Start Stop
+                # 72Ah Start Stop
                 {"categoria": "72Ah Start Stop", "nome": "Heliar 72Ah Start Stop", "marca": "Heliar", "amperagem": 72, "preco": 1150.00, "quantidade": 10, "meses_garantia": 24},
                 {"categoria": "72Ah Start Stop", "nome": "Moura 72Ah Start Stop", "marca": "Moura", "amperagem": 72, "preco": 1150.00, "quantidade": 10, "meses_garantia": 24},
 
@@ -106,14 +114,6 @@ def popular_baterias_iniciais():
                 {"categoria": "90Ah", "nome": "Moura 90Ah", "marca": "Moura", "amperagem": 90, "preco": 970.00, "quantidade": 10, "meses_garantia": 12},
                 {"categoria": "90Ah", "nome": "Cral 90Ah", "marca": "Cral", "amperagem": 90, "preco": 690.00, "quantidade": 10, "meses_garantia": 15},
                 {"categoria": "90Ah", "nome": "Biachine 90Ah", "marca": "Biachine", "amperagem": 90, "preco": 590.00, "quantidade": 10, "meses_garantia": 12},
-
-                # 60Ah
-                {"categoria": "60Ah", "nome": "Heliar 60Ah", "marca": "Heliar", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "60Ah", "nome": "Moura 60Ah", "marca": "Moura", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "60Ah", "nome": "América 60Ah", "marca": "América", "amperagem": 60, "preco": 450.00, "quantidade": 10, "meses_garantia": 18},
-                {"categoria": "60Ah", "nome": "Cral 60Ah", "marca": "Cral", "amperagem": 60, "preco": 430.00, "quantidade": 10, "meses_garantia": 24},
-                {"categoria": "60Ah", "nome": "KF 60Ah", "marca": "KF", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
-                {"categoria": "60Ah", "nome": "Super Life 60Ah", "marca": "Super Life", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
             ]
             supabase.table("produtos").insert(lista_inicial).execute()
     except Exception as e:
@@ -212,12 +212,10 @@ def gerador_pdf_nota(dados):
     return buffer
 
 def cancelar_venda(id_venda, produto_nome, quantidade):
-    # Devolve quantidade ao estoque
     prod = supabase.table("produtos").select("quantidade").eq("nome", produto_nome).execute()
     if prod.data:
         nova_qtd = prod.data[0]["quantidade"] + quantidade
         supabase.table("produtos").update({"quantidade": nova_qtd}).eq("nome", produto_nome).execute()
-    # Apaga venda
     supabase.table("vendas").delete().eq("id", id_venda).execute()
 
 # --- LOGIN ---
@@ -228,7 +226,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("logo.png"):
+    if os.path.exists("loo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -262,14 +260,6 @@ def modal_gerar_pdf(dados_venda):
         pdf_bytes = gerador_pdf_nota(dados_venda)
         st.download_button("📄 Baixar Nota Fiscal (PDF)", data=pdf_bytes, file_name=f"nota_{dados_venda['id']}.pdf", mime="application/pdf", use_container_width=True)
 
-@st.dialog("Confirmar Cancelamento 🔴")
-def modal_confirmar_cancelamento(id_venda, produto_nome, quantidade):
-    st.write(f"Deseja cancelar a venda #{id_venda}?")
-    if st.button("Sim, Cancelar Venda", use_container_width=True):
-        cancelar_venda(id_venda, produto_nome, quantidade)
-        st.toast("Venda cancelada com sucesso!", icon="✅")
-        st.rerun()
-
 # --- MENU LATERAL ---
 if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", use_container_width=True)
@@ -295,13 +285,13 @@ if st.sidebar.button("Sair"):
 # --- ABA 1: NOVA VENDA ---
 if menu == "Nova Venda":
     st.header("Lançamento de Venda")
-    res = supabase.table("produtos").select("id, nome, amperagem, preco, quantidade, meses_garantia, veiculo").execute()
+    res = supabase.table("produtos").select("id, categoria, nome, amperagem, preco, quantidade, meses_garantia, veiculo").execute()
     df_prods = pd.DataFrame(res.data)
 
     if df_prods.empty:
         st.warning("Nenhuma bateria no estoque!")
     else:
-        opcoes_prods = [""] + [f"ID {row['id']} | {row['nome']} - R$ {float(row['preco']):.2f} (Estoque: {int(row['quantidade'])})" for _, row in df_prods.iterrows()]
+        opcoes_prods = [""] + [f"ID {row['id']} | [{row.get('categoria', 'Geral')}] {row['nome']} - R$ {float(row['preco']):.2f} (Estoque: {int(row['quantidade'])})" for _, row in df_prods.iterrows()]
         prod_sel_str = st.selectbox("Selecione a Bateria", opcoes_prods, index=0)
         
         if prod_sel_str != "":
@@ -334,11 +324,9 @@ if menu == "Nova Venda":
                     else:
                         dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                         
-                        # Atualiza estoque no Supabase
                         nova_qtd = int(dados_p['quantidade']) - qtd
                         supabase.table("produtos").update({"quantidade": nova_qtd}).eq("id", id_prod).execute()
                         
-                        # Insere venda no Supabase
                         venda_payload = {
                             "data_hora": dt_hoje,
                             "vendedor": vendedor.strip(),
@@ -362,14 +350,26 @@ if menu == "Nova Venda":
 
                         modal_gerar_pdf({'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_preco, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
 
-# --- ABA 2: ESTOQUE ORGANIZADO ---
+# --- ABA 2: ESTOQUE ORGANIZADO POR CATEGORIA ---
 elif menu == "Estoque Organizado":
-    st.header("Estoque Geral")
-    res = supabase.table("produtos").select("id, categoria, nome, marca, amperagem, preco, quantidade, meses_garantia").order("id").execute()
+    st.header("Estoque Geral por Categoria")
+    res = supabase.table("produtos").select("id, categoria, nome, marca, amperagem, preco, quantidade, meses_garantia").order("categoria").order("id").execute()
     df_estoque = pd.DataFrame(res.data)
+    
     if not df_estoque.empty:
         df_estoque.columns = ['ID', 'Categoria', 'Modelo', 'Marca', 'Amperagem (Ah)', 'Preço (R$)', 'Estoque', 'Garantia (Meses)']
-    st.dataframe(df_estoque, use_container_width=True, hide_index=True)
+        
+        cats = ["Todas"] + sorted(df_estoque['Categoria'].unique().tolist())
+        cat_filtro = st.selectbox("Filtrar por Categoria", cats)
+        
+        if cat_filtro != "Todas":
+            df_exibir = df_estoque[df_estoque['Categoria'] == cat_filtro]
+        else:
+            df_exibir = df_estoque
+
+        st.dataframe(df_exibir, use_container_width=True, hide_index=True)
+    else:
+        st.info("Nenhuma bateria cadastrada.")
 
 # --- ABA 3: CONSULTAR GARANTIA ---
 elif menu == "Consultar Garantia":
@@ -389,7 +389,7 @@ elif menu == "Consultar Garantia":
         else:
             st.info("Nenhum registro encontrado.")
 
-# --- ABA 4: EDITAR BATERIAS ---
+# --- ABA 4: EDITAR BATERIAS (COM EDIÇÃO DE CATEGORIA) ---
 elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     st.header("Editar ou Excluir Baterias")
     res = supabase.table("produtos").select("*").order("id").execute()
@@ -398,21 +398,43 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     if df_prods.empty:
         st.info("Nenhuma bateria cadastrada.")
     else:
-        opcoes = ["-- Selecione --"] + [f"ID {row['id']} - {row['nome']}" for _, row in df_prods.iterrows()]
-        sel = st.selectbox("Escolha a bateria:", opcoes)
+        opcoes = ["-- Selecione --"] + [f"ID {row['id']} - [{row.get('categoria', 'Geral')}] {row['nome']}" for _, row in df_prods.iterrows()]
+        sel = st.selectbox("Escolha a bateria para editar:", opcoes)
         
         if sel != "-- Selecione --":
             id_sel = int(sel.split(" ")[1])
             item = df_prods[df_prods['id'] == id_sel].iloc[0]
 
-            e_nome = st.text_input("Nome", value=item['nome'])
-            col1, col2 = st.columns(2)
-            e_preco = col1.number_input("Preço R$", value=float(item['preco']))
-            e_qtd = col2.number_input("Estoque", value=int(item['quantidade']))
+            col_cat, col_nome = st.columns(2)
+            e_categoria = col_cat.text_input("Categoria (ex: 60Ah A, 60Ah B, 70Ah)", value=str(item.get('categoria', 'Geral')))
+            e_nome = col_nome.text_input("Nome do Modelo", value=item['nome'])
+
+            col1, col2, col3 = st.columns(3)
+            e_marca = col1.text_input("Marca", value=str(item.get('marca', '')))
+            e_preco = col2.number_input("Preço R$", value=float(item['preco']))
+            e_qtd = col3.number_input("Estoque", value=int(item['quantidade']))
             
-            if st.button("Salvar Alterações"):
-                supabase.table("produtos").update({"nome": e_nome, "preco": e_preco, "quantidade": e_qtd}).eq("id", id_sel).execute()
+            col4, col5 = st.columns(2)
+            e_amp = col4.number_input("Amperagem", value=int(item.get('amperagem', 60)))
+            e_garantia = col5.number_input("Meses de Garantia", value=int(item.get('meses_garantia', 12)))
+
+            col_btn1, col_btn2 = st.columns(2)
+            if col_btn1.button("Salvar Alterações", use_container_width=True):
+                supabase.table("produtos").update({
+                    "categoria": e_categoria.strip(),
+                    "nome": e_nome.strip(),
+                    "marca": e_marca.strip(),
+                    "preco": e_preco,
+                    "quantidade": e_qtd,
+                    "amperagem": e_amp,
+                    "meses_garantia": e_garantia
+                }).eq("id", id_sel).execute()
                 st.success("Bateria atualizada com sucesso!")
+                st.rerun()
+                
+            if col_btn2.button("Excluir Bateria 🔴", use_container_width=True):
+                supabase.table("produtos").delete().eq("id", id_sel).execute()
+                st.toast("Bateria excluída!", icon="🗑️")
                 st.rerun()
 
 # --- ABA 5: HISTÓRICO ---
@@ -430,7 +452,7 @@ elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
     st.header("Cadastrar Nova Bateria")
     with st.form("cad_manual"):
-        f_cat = st.text_input("Categoria", value="Geral")
+        f_cat = st.text_input("Categoria (ex: 60Ah A, 60Ah B, 70Ah, 80Ah...)", value="60Ah A")
         f_nome = st.text_input("Nome do Modelo")
         f_amp = st.number_input("Amperagem", value=60)
         f_marca = st.text_input("Marca", value="Heliar")
@@ -440,10 +462,10 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
         
         if st.form_submit_button("Cadastrar"):
             novo_prod = {
-                "categoria": f_cat,
-                "nome": f_nome,
+                "categoria": f_cat.strip(),
+                "nome": f_nome.strip(),
                 "amperagem": int(f_amp),
-                "marca": f_marca,
+                "marca": f_marca.strip(),
                 "preco": float(f_preco),
                 "quantidade": int(f_qtd),
                 "meses_garantia": int(f_garantia)
