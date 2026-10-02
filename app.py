@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização Neon Dark
+# Estilização Dark
 st.markdown("""
     <style>
     .stApp {
@@ -55,8 +55,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Procura o arquivo de banco disponível no servidor
-DB_NAME = "power_baterias2.db" if os.path.exists("power_baterias2.db") else "power_baterias_3.db"
+DB_NAME = "power_baterias_novo.db"
 
 USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
@@ -68,33 +67,19 @@ USUARIOS = {
 def inicializar_banco():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    
-    # Criar tabelas caso não existam
     c.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            categoria TEXT NOT NULL DEFAULT 'Geral',
             nome TEXT NOT NULL,
-            amperagem INTEGER NOT NULL,
-            marca TEXT NOT NULL,
-            preco REAL NOT NULL,
-            quantidade INTEGER NOT NULL,
+            amperagem INTEGER NOT NULL DEFAULT 0,
+            marca TEXT NOT NULL DEFAULT '',
+            preco REAL NOT NULL DEFAULT 0.0,
+            quantidade INTEGER NOT NULL DEFAULT 0,
             meses_garantia INTEGER DEFAULT 12,
-            categoria TEXT DEFAULT 'Geral',
             veiculo TEXT DEFAULT ''
         )
     """)
-    
-    # Adaptação para garantir colunas existentes
-    try:
-        c.execute("ALTER TABLE produtos ADD COLUMN categoria TEXT DEFAULT 'Geral'")
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        c.execute("ALTER TABLE produtos ADD COLUMN veiculo TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS vendas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,21 +87,20 @@ def inicializar_banco():
             vendedor TEXT NOT NULL,
             produto_nome TEXT NOT NULL,
             quantidade INTEGER NOT NULL,
-            preco_original REAL NOT NULL DEFAULT 0,
-            desconto REAL NOT NULL DEFAULT 0,
-            valor_total REAL NOT NULL,
+            preco_original REAL NOT NULL DEFAULT 0.0,
+            desconto REAL NOT NULL DEFAULT 0.0,
+            valor_total REAL NOT NULL DEFAULT 0.0,
             forma_pagamento TEXT NOT NULL,
-            cliente_nome TEXT,
-            cliente_cpf TEXT,
-            veiculo_placa TEXT,
-            veiculo_modelo TEXT DEFAULT '',
-            numero_serie TEXT,
+            cliente_nome TEXT DEFAULT 'Consumidor Não Identificado',
+            cliente_cpf TEXT DEFAULT 'Não Informado',
+            veiculo_placa TEXT DEFAULT 'Não Informado',
+            veiculo_modelo TEXT DEFAULT 'Não Informado',
+            numero_serie TEXT DEFAULT 'Não Informado',
             parcelas TEXT DEFAULT '1x',
             amperagem INTEGER DEFAULT 0,
             meses_garantia INTEGER DEFAULT 12
         )
     """)
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS fechamento_caixa (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -126,18 +110,15 @@ def inicializar_banco():
             total_vendas INTEGER NOT NULL
         )
     """)
-
     conn.commit()
     conn.close()
 
 def gerador_pdf_nota(dados):
     if not REPORTLAB_DISPONIVEL:
         return None
-
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     story = []
-    
     styles = getSampleStyleSheet()
     header_title = ParagraphStyle('HeaderTitle', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#28a745'), alignment=0)
     nf_title = ParagraphStyle('NFTitle', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#000000'), alignment=2)
@@ -150,8 +131,7 @@ def gerador_pdf_nota(dados):
             Paragraph(f"<b>COMPROVANTE DE VENDA</b><br/><b>Nº: #{dados.get('id', 0):06d}</b><br/>Data: {dados.get('data_hora', '')}", nf_title)
         ]
     ]
-    t_topo = Table(topo, colWidths=[320, 220])
-    story.append(t_topo)
+    story.append(Table(topo, colWidths=[320, 220]))
     story.append(Spacer(1, 10))
 
     dados_cliente = [
@@ -187,7 +167,6 @@ def gerador_pdf_nota(dados):
             Paragraph(f"<b>R$ {dados.get('valor_total', 0.0):.2f}</b>", body_style)
         ]
     ]
-    
     t_prod = Table(table_prod, colWidths=[220, 50, 40, 75, 65, 90])
     t_prod.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#28a745')),
@@ -220,7 +199,7 @@ def gerador_pdf_nota(dados):
 def cancelar_venda(id_venda, produto_nome, quantidade):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute("UPDATE produtos SET quantidade = COALESCE(quantidade, 0) + ? WHERE nome = ?", (quantidade, produto_nome))
+    c.execute("UPDATE produtos SET quantidade = quantidade + ? WHERE nome = ?", (quantidade, produto_nome))
     c.execute("DELETE FROM vendas WHERE id = ?", (id_venda,))
     conn.commit()
     conn.close()
@@ -234,7 +213,7 @@ def excluir_bateria(id_bateria):
 
 inicializar_banco()
 
-# --- LOGIN E SESSÃO ---
+# --- LOGIN ---
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
     st.session_state["perfil"] = None
@@ -242,20 +221,18 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("loo.png"):
+    if os.path.exists("logo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
-        
     st.markdown("<p style='text-align: center; color: #39ff14;'>DISK BATERIAS: (61) 99519-1090</p>", unsafe_allow_html=True)
     st.write("---")
     
-    col1, col2, col3 = st.columns([1, 1.2, 1])
+    _, col2, _ = st.columns([1, 1.2, 1])
     with col2:
         st.subheader("Acesso ao Sistema")
         usuario_input = st.text_input("Usuário").strip().lower()
         senha_input = st.text_input("Senha", type="password").strip()
-        
         if st.button("Entrar", use_container_width=True):
             if usuario_input in USUARIOS and USUARIOS[usuario_input]["senha"] == senha_input:
                 dados_usr = USUARIOS[usuario_input]
@@ -269,61 +246,22 @@ if not st.session_state["logado"]:
     st.stop()
 
 # --- MODAIS ---
-@st.dialog("Venda Finalizada com Sucesso! 🟢")
+@st.dialog("Venda Finalizada! 🟢")
 def modal_gerar_pdf(dados_venda):
     st.write(f"**Cliente:** {dados_venda['cliente_nome']}")
     st.write(f"**Bateria:** {dados_venda['produto_nome']}")
     st.write(f"**Valor Total:** R$ {dados_venda['valor_total']:.2f}")
-    
     if REPORTLAB_DISPONIVEL:
-        st.write("Deseja gerar e baixar o **Comprovante de Venda** agora?")
         pdf_bytes = gerador_pdf_nota(dados_venda)
-        st.download_button(
-            label="📄 Baixar Nota Fiscal (PDF)",
-            data=pdf_bytes,
-            file_name=f"nota_fiscal_{dados_venda['id']}_power_baterias.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
+        st.download_button("📄 Baixar Nota Fiscal (PDF)", data=pdf_bytes, file_name=f"nota_{dados_venda['id']}.pdf", mime="application/pdf", use_container_width=True)
 
 @st.dialog("Confirmar Cancelamento 🔴")
 def modal_confirmar_cancelamento(id_venda, produto_nome, quantidade):
-    st.write(f"Tem certeza que deseja **cancelar a venda #{id_venda}**?")
-    st.caption(f"Produto: {produto_nome} | Qtd a devolver: {quantidade}")
-    
+    st.write(f"Deseja cancelar a venda #{id_venda}?")
     if st.button("Sim, Cancelar Venda", use_container_width=True):
         cancelar_venda(id_venda, produto_nome, quantidade)
-        st.toast(f"Venda #{id_venda} cancelada!", icon="✅")
+        st.toast("Venda cancelada com sucesso!", icon="✅")
         st.rerun()
-
-@st.dialog("Confirmar Exclusão de Bateria 🔴")
-def modal_confirmar_exclusao_bateria(id_bateria, nome_bateria):
-    st.write(f"Deseja excluir a bateria **{nome_bateria}** (ID #{id_bateria})?")
-    col_sim, col_nao = st.columns(2)
-    if col_sim.button("Sim, Excluir", use_container_width=True):
-        excluir_bateria(id_bateria)
-        st.toast(f"Bateria {nome_bateria} excluída!", icon="✅")
-        st.rerun()
-
-@st.dialog("Bateria Editada com Sucesso! 🟢")
-def modal_bateria_editada_sucesso(nome_bateria):
-    st.write(f"As alterações da bateria **{nome_bateria}** foram salvas!")
-    if st.button("OK", use_container_width=True):
-        st.rerun()
-
-def calcular_desempenho_vendedor(nome_vendedor):
-    conn = sqlite3.connect(DB_NAME)
-    df_vendas = pd.read_sql_query("SELECT vendedor, quantidade FROM vendas", conn)
-    conn.close()
-    
-    if df_vendas.empty:
-        return 0, 0, 0.0
-
-    total_geral = df_vendas['quantidade'].sum()
-    minhas_vendas = df_vendas[df_vendas['vendedor'].astype(str).str.lower() == nome_vendedor.lower()]['quantidade'].sum()
-    
-    porcentagem = (minhas_vendas / total_geral * 100) if total_geral > 0 else 0.0
-    return minhas_vendas, total_geral, porcentagem
 
 # --- MENU LATERAL ---
 if os.path.exists("logo.png"):
@@ -332,13 +270,6 @@ else:
     st.sidebar.markdown("## POWER BATERIAS")
 
 st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
-
-vendedor_atual = st.session_state['vendedor_nome']
-un_vendedor, total_loja, pct_desempenho = calcular_desempenho_vendedor(vendedor_atual)
-
-st.sidebar.markdown(f"Utilizador: **{vendedor_atual} ({st.session_state['perfil']})**")
-st.sidebar.markdown(f"Desempenho Mês: **{pct_desempenho:.0f}%** ({un_vendedor} unidades vendidas)")
-st.sidebar.write("---")
 
 opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia"]
 if st.session_state["perfil"] == "ADM":
@@ -352,23 +283,19 @@ menu = st.sidebar.radio("Navegação", opcoes_menu, key="pagina_atual")
 st.sidebar.write("---")
 if st.sidebar.button("Sair"):
     st.session_state["logado"] = False
-    st.session_state["perfil"] = None
-    st.session_state["vendedor_nome"] = ""
     st.rerun()
 
 # --- ABA 1: NOVA VENDA ---
 if menu == "Nova Venda":
     st.header("Lançamento de Venda")
-    
     conn = sqlite3.connect(DB_NAME)
-    df_prods = pd.read_sql_query("SELECT id, nome, amperagem, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos", conn)
+    df_prods = pd.read_sql_query("SELECT id, nome, amperagem, preco, quantidade, meses_garantia, veiculo FROM produtos", conn)
     conn.close()
 
     if df_prods.empty:
-        st.warning("Nenhuma bateria cadastrada no banco de dados!")
+        st.warning("Nenhuma bateria no estoque!")
     else:
         opcoes_prods = [""] + [f"ID {row['id']} | {row['nome']} - R$ {float(row['preco']):.2f} (Estoque: {int(row['quantidade'])})" for _, row in df_prods.iterrows()]
-        
         prod_sel_str = st.selectbox("Selecione a Bateria", opcoes_prods, index=0)
         
         if prod_sel_str != "":
@@ -378,239 +305,104 @@ if menu == "Nova Venda":
             
             with st.form("form_nova_venda", clear_on_submit=True):
                 col1, col2 = st.columns(2)
-                
                 with col1:
-                    st.subheader("Dados da Venda")
                     qtd = st.number_input("Quantidade *", min_value=1, value=1)
                     preco_base = float(dados_p['preco'])
-                    
-                    st.info(f"Preço Tabela (Unitário): R$ {preco_base:.2f}")
-                    
-                    ajuste_preco = st.number_input("Ajuste de Preço (R$) - Reduzir com '-' ou Aumentar com '+'", value=0.0, step=5.0)
+                    st.info(f"Preço Tabela: R$ {preco_base:.2f}")
+                    ajuste_preco = st.number_input("Ajuste de Preço (R$)", value=0.0, step=5.0)
                     valor_final = (preco_base * qtd) - ajuste_preco
                     st.success(f"Valor Total Final: R$ {valor_final:.2f}")
-                    
-                    vendedor = st.text_input("Nome do Vendedor *", value=st.session_state.get("vendedor_nome", ""))
-                    pagamento = st.selectbox("Forma de Pagamento *", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
+                    vendedor = st.text_input("Vendedor *", value=st.session_state.get("vendedor_nome", ""))
+                    pagamento = st.selectbox("Pagamento *", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
                     parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
-                    
                 with col2:
-                    st.subheader("Dados do Cliente e Veículo")
-                    cliente = st.text_input("Nome do Cliente")
-                    cpf = st.text_input("CPF / CNPJ (Opcional)")
-                    veiculo_mod = st.text_input("Modelo do Veículo *", value="")
-                    placa = st.text_input("Placa do Veículo (Opcional)")
-                    serie = st.text_input("Nº de Série da Bateria (Opcional)")
+                    cliente = st.text_input("Cliente")
+                    cpf = st.text_input("CPF / CNPJ")
+                    veiculo_mod = st.text_input("Modelo do Veículo *", value=str(dados_p['veiculo'] or ''))
+                    placa = st.text_input("Placa")
+                    serie = st.text_input("Nº Série Bateria")
 
-                btn_finalizar = st.form_submit_button("Concluir Venda", use_container_width=True)
+                if st.form_submit_button("Concluir Venda", use_container_width=True):
+                    if not vendedor.strip() or not veiculo_mod.strip():
+                        st.error("Preencha Vendedor e Veículo!")
+                    else:
+                        dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                        conn = sqlite3.connect(DB_NAME)
+                        c = conn.cursor()
+                        c.execute("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?", (qtd, id_prod))
+                        c.execute("""
+                            INSERT INTO vendas (data_hora, vendedor, produto_nome, quantidade, preco_original, desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (dt_hoje, vendedor.strip(), dados_p['nome'], qtd, preco_base, ajuste_preco, valor_final, pagamento, cliente or "Consumidor Não Identificado", cpf or "Não Informado", placa.upper() or "Não Informado", veiculo_mod.strip(), serie.upper() or "Não Informado", parcelas, dados_p['amperagem'], dados_p['meses_garantia']))
+                        id_venda = c.lastrowid
+                        conn.commit()
+                        conn.close()
 
-            if btn_finalizar:
-                if not vendedor.strip():
-                    st.error("Erro: O campo 'Nome do Vendedor' é obrigatório!")
-                elif not veiculo_mod.strip():
-                    st.error("Erro: O campo 'Modelo do Veículo' é obrigatório!")
-                else:
-                    dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                    conn = sqlite3.connect(DB_NAME)
-                    c = conn.cursor()
-                    c.execute("UPDATE produtos SET quantidade = COALESCE(quantidade, 0) - ? WHERE id = ?", (qtd, id_prod))
-                    c.execute("""
-                        INSERT INTO vendas (
-                            data_hora, vendedor, produto_nome, quantidade, preco_original, 
-                            desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, 
-                            veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        dt_hoje, vendedor.strip(), dados_p['nome'], qtd, preco_base,
-                        ajuste_preco, valor_final, pagamento, cliente or "Consumidor Não Identificado",
-                        cpf or "Não Informado", placa.upper() or "Não Informado", veiculo_mod.strip(),
-                        serie.upper() or "Não Informado", parcelas, dados_p['amperagem'], dados_p['meses_garantia']
-                    ))
-                    id_venda = c.lastrowid
-                    conn.commit()
-                    conn.close()
+                        modal_gerar_pdf({'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_preco, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
 
-                    modal_gerar_pdf({
-                        'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(),
-                        'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado",
-                        'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(),
-                        'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'],
-                        'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base,
-                        'desconto': ajuste_preco, 'valor_total': valor_final, 'forma_pagamento': pagamento,
-                        'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']
-                    })
-
-# --- ABA 2: FECHAMENTO DE CAIXA (ADM) ---
-elif menu == "Fechamento de Caixa" and st.session_state["perfil"] == "ADM":
-    st.header("🔑 Fechamento de Caixa & Relatório Financeiro")
-    
-    conn = sqlite3.connect(DB_NAME)
-    df_vendas_todas = pd.read_sql_query("SELECT * FROM vendas ORDER BY id DESC", conn)
-    conn.close()
-    
-    dt_hoje_str = datetime.now().strftime("%d/%m/%Y")
-    
-    if not df_vendas_todas.empty:
-        df_vendas_todas['data_apenas'] = df_vendas_todas['data_hora'].apply(lambda x: str(x).split(" ")[0])
-        df_vendas_hoje = df_vendas_todas[df_vendas_todas['data_apenas'] == dt_hoje_str]
-    else:
-        df_vendas_hoje = pd.DataFrame()
-
-    total_hoje = float(df_vendas_hoje['valor_total'].sum()) if not df_vendas_hoje.empty else 0.0
-    qtd_hoje = int(df_vendas_hoje['quantidade'].sum()) if not df_vendas_hoje.empty else 0
-
-    col1, col2 = st.columns(2)
-    col1.metric(f"Faturamento de Hoje ({dt_hoje_str})", f"R$ {total_hoje:,.2f}")
-    col2.metric("Baterias Vendidas Hoje", f"{qtd_hoje} Unidades")
-
-    st.write("---")
-    st.subheader("🔒 Realizar Fechamento do Caixa de Hoje")
-    
-    with st.form("form_fechar_caixa"):
-        senha_adm = st.text_input("Digite sua Senha de ADM para Confirmar o Fechamento", type="password")
-        if st.form_submit_button("Confirmar e Fechar Caixa do Dia"):
-            usr_key = st.session_state["usuario_key"]
-            if USUARIOS[usr_key]["senha"] == senha_adm:
-                conn = sqlite3.connect(DB_NAME)
-                c = conn.cursor()
-                c.execute("""
-                    INSERT INTO fechamento_caixa (data_fechamento, responsavel, total_faturado, total_vendas)
-                    VALUES (?, ?, ?, ?)
-                """, (dt_hoje_str, st.session_state["vendedor_nome"], total_hoje, qtd_hoje))
-                conn.commit()
-                conn.close()
-                st.success(f"Caixa do dia {dt_hoje_str} fechado com sucesso por {st.session_state['vendedor_nome']}!")
-            else:
-                st.error("Senha de ADM incorreta!")
-
-# --- ABA 3: ESTOQUE ORGANIZADO ---
+# --- ABA 2: ESTOQUE ORGANIZADO ---
 elif menu == "Estoque Organizado":
-    st.header("Estoque Organizado por Categoria")
-    
+    st.header("Estoque Geral")
     conn = sqlite3.connect(DB_NAME)
-    df_estoque = pd.read_sql_query("SELECT id, nome, amperagem, marca, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos ORDER BY id ASC", conn)
+    df_estoque = pd.read_sql_query("SELECT id, categoria as Categoria, nome as Modelo, marca as Marca, amperagem as Amperagem, preco as Preço, quantidade as Estoque, meses_garantia as Garantia FROM produtos ORDER BY id ASC", conn)
     conn.close()
-    
-    if df_estoque.empty:
-        st.info("Nenhum produto cadastrado no estoque.")
-    else:
-        st.dataframe(df_estoque, use_container_width=True, hide_index=True)
+    st.dataframe(df_estoque, use_container_width=True, hide_index=True)
 
-# --- ABA 4: EDITAR BATERIAS ---
+# --- ABA 3: EDITAR BATERIAS ---
 elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
-    st.header("Alterar ou Excluir Baterias")
-    
+    st.header("Editar ou Excluir Baterias")
     conn = sqlite3.connect(DB_NAME)
-    df_prods = pd.read_sql_query("SELECT id, nome, amperagem, marca, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos ORDER BY id ASC", conn)
+    df_prods = pd.read_sql_query("SELECT * FROM produtos ORDER BY id ASC", conn)
     conn.close()
 
-    opcoes = ["-- Selecione uma Bateria --"] + [f"ID {row['id']} - {row['nome']} (R$ {row['preco']:.2f})" for _, row in df_prods.iterrows()]
-    selecionado = st.selectbox("Selecione a bateria para alterar:", opcoes)
+    opcoes = ["-- Selecione --"] + [f"ID {row['id']} - {row['nome']}" for _, row in df_prods.iterrows()]
+    sel = st.selectbox("Escolha a bateria:", opcoes)
     
-    if selecionado != "-- Selecione uma Bateria --":
-        id_sel = int(selecionado.split(" ")[1])
+    if sel != "-- Selecione --":
+        id_sel = int(sel.split(" ")[1])
         item = df_prods[df_prods['id'] == id_sel].iloc[0]
 
-        e_nome = st.text_input("Nome/Modelo", value=item['nome'])
+        e_nome = st.text_input("Nome", value=item['nome'])
+        col1, col2 = st.columns(2)
+        e_preco = col1.number_input("Preço R$", value=float(item['preco']))
+        e_qtd = col2.number_input("Estoque", value=int(item['quantidade']))
         
-        col1, col2, col3 = st.columns(3)
-        e_amp = col1.number_input("Amperagem (Ah)", min_value=1, value=int(item['amperagem']))
-        e_marca = col1.text_input("Marca", value=item['marca'])
-        e_preco = col2.number_input("Preço R$", min_value=0.0, value=float(item['preco']))
-        e_qtd = col2.number_input("Estoque", min_value=0, value=int(item['quantidade']))
-        e_garantia = col3.number_input("Garantia (Meses)", min_value=1, value=int(item['meses_garantia']))
-        
-        col_salvar, col_excluir = st.columns([2, 1])
-        if col_salvar.button("Salvar Alterações", use_container_width=True):
+        if st.button("Salvar Alterações"):
             conn = sqlite3.connect(DB_NAME)
             c = conn.cursor()
-            c.execute("""
-                UPDATE produtos SET nome = ?, amperagem = ?, marca = ?, preco = ?, quantidade = ?, meses_garantia = ?
-                WHERE id = ?
-            """, (e_nome.strip(), e_amp, e_marca, e_preco, e_qtd, e_garantia, id_sel))
+            c.execute("UPDATE produtos SET nome = ?, preco = ?, quantidade = ? WHERE id = ?", (e_nome, e_preco, e_qtd, id_sel))
             conn.commit()
             conn.close()
-            modal_bateria_editada_sucesso(e_nome.strip())
+            st.success("Bateria atualizada!")
+            st.rerun()
 
-        if col_excluir.button("🔴 Excluir Bateria", use_container_width=True):
-            modal_confirmar_exclusao_bateria(id_sel, item['nome'])
-
-# --- ABA 5: GARANTIA ---
-elif menu == "Consultar Garantia":
-    st.header("Consulta de Garantias")
-    termo = st.text_input("Pesquisar por Nome do Cliente, CPF, Placa, Veículo ou Nº de Série")
-    
-    conn = sqlite3.connect(DB_NAME)
-    if termo:
-        df_garantia = pd.read_sql_query("""
-            SELECT id, data_hora, cliente_nome, cliente_cpf, produto_nome, amperagem, veiculo_placa, veiculo_modelo, numero_serie, meses_garantia 
-            FROM vendas WHERE cliente_nome LIKE ? OR cliente_cpf LIKE ? OR veiculo_placa LIKE ? OR veiculo_modelo LIKE ? OR numero_serie LIKE ?
-            ORDER BY id DESC
-        """, conn, params=(f"%{termo}%", f"%{termo}%", f"%{termo}%", f"%{termo}%", f"%{termo}%"))
-    else:
-        df_garantia = pd.read_sql_query("SELECT id, data_hora, cliente_nome, cliente_cpf, produto_nome, amperagem, veiculo_placa, veiculo_modelo, numero_serie, meses_garantia FROM vendas ORDER BY id DESC LIMIT 15", conn)
-    conn.close()
-
-    if not df_garantia.empty:
-        hoje = datetime.now()
-        resultados = []
-        for _, r in df_garantia.iterrows():
-            try:
-                dt_v = datetime.strptime(r['data_hora'], "%d/%m/%Y %H:%M:%S")
-            except:
-                dt_v = hoje
-            restantes = ((dt_v + timedelta(days=(r['meses_garantia'] or 12) * 30)) - hoje).days
-            resultados.append({
-                "Nº Venda": r['id'], "Data": dt_v.strftime("%d/%m/%Y"), "Cliente": r['cliente_nome'],
-                "CPF / CNPJ": r['cliente_cpf'], "Produto": f"{r['produto_nome']} ({r['amperagem']}Ah)",
-                "Veículo": r['veiculo_modelo'], "Placa": r['veiculo_placa'], "Nº Série": r['numero_serie'],
-                "Status": "🟢 NA GARANTIA" if restantes > 0 else "🔴 VENCIDA", "Prazo": f"{restantes} dias restantes" if restantes > 0 else f"Vencida há {abs(restantes)} dias"
-            })
-        st.dataframe(pd.DataFrame(resultados), use_container_width=True, hide_index=True)
-
-# --- ABA 6: HISTÓRICO DE VENDAS ---
+# --- ABA 4: HISTÓRICO ---
 elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
-    st.header("Histórico Geral de Vendas")
+    st.header("Histórico de Vendas")
     conn = sqlite3.connect(DB_NAME)
     df_hist = pd.read_sql_query("SELECT * FROM vendas ORDER BY id DESC", conn)
     conn.close()
     
     if df_hist.empty:
-        st.info("Nenhuma venda registrada até o momento.")
+        st.info("Nenhuma venda registrada.")
     else:
-        for _, row in df_hist.iterrows():
-            col_i, col_d, col_v, col_btn, col_del = st.columns([1, 2.5, 2, 2, 2])
-            col_i.write(f"**Nº #{row['id']}**")
-            col_d.write(f"**Data:** {row['data_hora']}<br/>**Cliente:** {row['cliente_nome']}<br/>**Vendedor:** {row['vendedor']}", unsafe_allow_html=True)
-            col_v.write(f"**Produto:** {row['produto_nome']}<br/>**Total:** R$ {row['valor_total']:.2f}", unsafe_allow_html=True)
-            
-            if REPORTLAB_DISPONIVEL:
-                pdf_bytes = gerador_pdf_nota(row.to_dict())
-                col_btn.download_button("📄 PDF", data=pdf_bytes, file_name=f"nota_{row['id']}.pdf", mime="application/pdf", key=f"btn_pdf_{row['id']}")
+        st.dataframe(df_hist[['id', 'data_hora', 'vendedor', 'produto_nome', 'quantidade', 'valor_total', 'forma_pagamento', 'cliente_nome']], use_container_width=True, hide_index=True)
 
-            if col_del.button("🔴 Cancelar", key=f"btn_del_{row['id']}"):
-                modal_confirmar_cancelamento(row['id'], row['produto_nome'], row['quantidade'])
-
-# --- ABA 7: PAINEL ADM ---
+# --- ABA 5: PAINEL ADM ---
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
-    st.header("Painel ADM - Cadastro de Produtos")
-    
+    st.header("Cadastrar Nova Bateria")
     with st.form("cad_manual"):
-        f_nome = st.text_input("Nome do Modelo (ex: Heliar 60Ah)")
-        f_amp = st.number_input("Amperagem (Ah)", min_value=1, value=60)
+        f_nome = st.text_input("Nome do Modelo")
+        f_amp = st.number_input("Amperagem", value=60)
         f_marca = st.text_input("Marca", value="Heliar")
-        f_preco = st.number_input("Preço (R$)", min_value=0.0, value=400.0)
-        f_qtd = st.number_input("Quantidade em Estoque", min_value=1, value=10)
-        f_garantia = st.number_input("Garantia (Meses)", min_value=1, value=24)
+        f_preco = st.number_input("Preço (R$)", value=400.0)
+        f_qtd = st.number_input("Estoque Inicial", value=10)
         
-        if st.form_submit_button("Cadastrar Bateria"):
+        if st.form_submit_button("Cadastrar"):
             conn = sqlite3.connect(DB_NAME)
             c = conn.cursor()
-            c.execute("""
-                INSERT INTO produtos (nome, amperagem, marca, preco, quantidade, meses_garantia)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (f_nome.strip(), f_amp, f_marca, f_preco, f_qtd, f_garantia))
+            c.execute("INSERT INTO produtos (nome, amperagem, marca, preco, quantidade) VALUES (?, ?, ?, ?, ?)", (f_nome, f_amp, f_marca, f_preco, f_qtd))
             conn.commit()
             conn.close()
-            st.success("Nova bateria cadastrada com sucesso!")
+            st.success("Cadastrado com sucesso!")
             st.rerun()
