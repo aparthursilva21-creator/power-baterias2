@@ -55,7 +55,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-DB_NAME = "power_baterias_2.db"
+# Procura o arquivo de banco disponível no servidor
+DB_NAME = "power_baterias2.db" if os.path.exists("power_baterias2.db") else "power_baterias_3.db"
 
 USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
@@ -68,20 +69,32 @@ def inicializar_banco():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     
+    # Criar tabelas caso não existam
     c.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categoria TEXT NOT NULL,
             nome TEXT NOT NULL,
             amperagem INTEGER NOT NULL,
             marca TEXT NOT NULL,
             preco REAL NOT NULL,
             quantidade INTEGER NOT NULL,
             meses_garantia INTEGER DEFAULT 12,
+            categoria TEXT DEFAULT 'Geral',
             veiculo TEXT DEFAULT ''
         )
     """)
     
+    # Adaptação para garantir colunas existentes
+    try:
+        c.execute("ALTER TABLE produtos ADD COLUMN categoria TEXT DEFAULT 'Geral'")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        c.execute("ALTER TABLE produtos ADD COLUMN veiculo TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+
     c.execute("""
         CREATE TABLE IF NOT EXISTS vendas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,8 +102,8 @@ def inicializar_banco():
             vendedor TEXT NOT NULL,
             produto_nome TEXT NOT NULL,
             quantidade INTEGER NOT NULL,
-            preco_original REAL NOT NULL,
-            desconto REAL NOT NULL,
+            preco_original REAL NOT NULL DEFAULT 0,
+            desconto REAL NOT NULL DEFAULT 0,
             valor_total REAL NOT NULL,
             forma_pagamento TEXT NOT NULL,
             cliente_nome TEXT,
@@ -229,7 +242,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("logo.png"):
+    if os.path.exists("loo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -348,7 +361,7 @@ if menu == "Nova Venda":
     st.header("Lançamento de Venda")
     
     conn = sqlite3.connect(DB_NAME)
-    df_prods = pd.read_sql_query("SELECT id, categoria, nome, amperagem, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia, veiculo FROM produtos", conn)
+    df_prods = pd.read_sql_query("SELECT id, nome, amperagem, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos", conn)
     conn.close()
 
     if df_prods.empty:
@@ -385,7 +398,7 @@ if menu == "Nova Venda":
                     st.subheader("Dados do Cliente e Veículo")
                     cliente = st.text_input("Nome do Cliente")
                     cpf = st.text_input("CPF / CNPJ (Opcional)")
-                    veiculo_mod = st.text_input("Modelo do Veículo *", value=str(dados_p['veiculo'] or ''))
+                    veiculo_mod = st.text_input("Modelo do Veículo *", value="")
                     placa = st.text_input("Placa do Veículo (Opcional)")
                     serie = st.text_input("Nº de Série da Bateria (Opcional)")
 
@@ -470,39 +483,25 @@ elif menu == "Fechamento de Caixa" and st.session_state["perfil"] == "ADM":
             else:
                 st.error("Senha de ADM incorreta!")
 
-    st.write("---")
-    st.subheader("📅 Consultar Fechamentos e Vendas por Data")
-
-    if not df_vendas_todas.empty:
-        datas_disponiveis = sorted(df_vendas_todas['data_apenas'].unique(), reverse=True)
-        data_sel = st.selectbox("Selecione a Data:", datas_disponiveis)
-        
-        df_dia = df_vendas_todas[df_vendas_todas['data_apenas'] == data_sel]
-        
-        st.write(f"**Vendas do dia {data_sel}** - Faturamento Total: **R$ {df_dia['valor_total'].sum():,.2f}**")
-        st.dataframe(df_dia[['id', 'data_hora', 'vendedor', 'produto_nome', 'quantidade', 'valor_total', 'forma_pagamento', 'cliente_nome']], use_container_width=True, hide_index=True)
-
 # --- ABA 3: ESTOQUE ORGANIZADO ---
 elif menu == "Estoque Organizado":
     st.header("Estoque Organizado por Categoria")
     
     conn = sqlite3.connect(DB_NAME)
-    df_estoque = pd.read_sql_query("SELECT id, categoria, nome, amperagem, marca, veiculo, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos ORDER BY id ASC", conn)
+    df_estoque = pd.read_sql_query("SELECT id, nome, amperagem, marca, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos ORDER BY id ASC", conn)
     conn.close()
     
-    for cat in df_estoque['categoria'].unique():
-        with st.expander(f"Categoria: {cat}", expanded=True):
-            df_sub = df_estoque[df_estoque['categoria'] == cat][['id', 'nome', 'marca', 'amperagem', 'veiculo', 'preco', 'quantidade', 'meses_garantia']]
-            df_sub.columns = ['ID', 'Modelo', 'Marca', 'Amp (Ah)', 'Veículos Indicados', 'Preço (R$)', 'Qtd Est.', 'Garantia (Meses)']
-            st.dataframe(df_sub, use_container_width=True, hide_index=True)
+    if df_estoque.empty:
+        st.info("Nenhum produto cadastrado no estoque.")
+    else:
+        st.dataframe(df_estoque, use_container_width=True, hide_index=True)
 
 # --- ABA 4: EDITAR BATERIAS ---
 elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     st.header("Alterar ou Excluir Baterias")
     
     conn = sqlite3.connect(DB_NAME)
-    df_prods = pd.read_sql_query("SELECT id, categoria, nome, amperagem, marca, veiculo, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos ORDER BY id ASC", conn)
-    cats_existentes = pd.read_sql_query("SELECT DISTINCT categoria FROM produtos", conn)['categoria'].tolist()
+    df_prods = pd.read_sql_query("SELECT id, nome, amperagem, marca, preco, COALESCE(quantidade, 0) as quantidade, meses_garantia FROM produtos ORDER BY id ASC", conn)
     conn.close()
 
     opcoes = ["-- Selecione uma Bateria --"] + [f"ID {row['id']} - {row['nome']} (R$ {row['preco']:.2f})" for _, row in df_prods.iterrows()]
@@ -511,14 +510,8 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     if selecionado != "-- Selecione uma Bateria --":
         id_sel = int(selecionado.split(" ")[1])
         item = df_prods[df_prods['id'] == id_sel].iloc[0]
-        
-        cat_opcoes = list(cats_existentes) + ["+ Criar Nova Categoria"]
-        cat_idx = cat_opcoes.index(item['categoria']) if item['categoria'] in cat_opcoes else 0
-        cat_selecionada = st.selectbox("Categoria/Família *", cat_opcoes, index=cat_idx)
-        e_cat = st.text_input("Digite o Nome da Nova Categoria:") if cat_selecionada == "+ Criar Nova Categoria" else cat_selecionada
 
         e_nome = st.text_input("Nome/Modelo", value=item['nome'])
-        e_veiculo = st.text_input("Veículos Recomendados", value=item['veiculo'] if 'veiculo' in item else '')
         
         col1, col2, col3 = st.columns(3)
         e_amp = col1.number_input("Amperagem (Ah)", min_value=1, value=int(item['amperagem']))
@@ -532,9 +525,9 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
             conn = sqlite3.connect(DB_NAME)
             c = conn.cursor()
             c.execute("""
-                UPDATE produtos SET categoria = ?, nome = ?, amperagem = ?, marca = ?, veiculo = ?, preco = ?, quantidade = ?, meses_garantia = ?
+                UPDATE produtos SET nome = ?, amperagem = ?, marca = ?, preco = ?, quantidade = ?, meses_garantia = ?
                 WHERE id = ?
-            """, (e_cat.strip(), e_nome.strip(), e_amp, e_marca, e_veiculo, e_preco, e_qtd, e_garantia, id_sel))
+            """, (e_nome.strip(), e_amp, e_marca, e_preco, e_qtd, e_garantia, id_sel))
             conn.commit()
             conn.close()
             modal_bateria_editada_sucesso(e_nome.strip())
@@ -602,17 +595,8 @@ elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
     st.header("Painel ADM - Cadastro de Produtos")
     
-    conn = sqlite3.connect(DB_NAME)
-    cats_existentes = pd.read_sql_query("SELECT DISTINCT categoria FROM produtos", conn)['categoria'].tolist()
-    conn.close()
-
     with st.form("cad_manual"):
-        cat_opcoes = list(cats_existentes) + ["+ Criar Nova Categoria"]
-        cat_sel = st.selectbox("Categoria/Família", cat_opcoes)
-        f_cat = st.text_input("Nome da Nova Categoria:") if cat_sel == "+ Criar Nova Categoria" else cat_sel
-
         f_nome = st.text_input("Nome do Modelo (ex: Heliar 60Ah)")
-        f_veiculo = st.text_input("Veículos Recomendados", value="Carros de Passeio")
         f_amp = st.number_input("Amperagem (Ah)", min_value=1, value=60)
         f_marca = st.text_input("Marca", value="Heliar")
         f_preco = st.number_input("Preço (R$)", min_value=0.0, value=400.0)
@@ -623,9 +607,9 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
             conn = sqlite3.connect(DB_NAME)
             c = conn.cursor()
             c.execute("""
-                INSERT INTO produtos (categoria, nome, amperagem, marca, veiculo, preco, quantidade, meses_garantia)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (f_cat.strip(), f_nome.strip(), f_amp, f_marca, f_veiculo, f_preco, f_qtd, f_garantia))
+                INSERT INTO produtos (nome, amperagem, marca, preco, quantidade, meses_garantia)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (f_nome.strip(), f_amp, f_marca, f_preco, f_qtd, f_garantia))
             conn.commit()
             conn.close()
             st.success("Nova bateria cadastrada com sucesso!")
