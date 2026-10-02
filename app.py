@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização Dark[cite: 13]
+# Estilização Dark
 st.markdown("""
     <style>
     .stApp {
@@ -64,6 +64,62 @@ def init_supabase():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 supabase = init_supabase()
+
+# --- FUNÇÃO PARA POPULAR O ESTOQUE INICIAL CASO ESTEJA VAZIO ---
+def popular_baterias_iniciais():
+    try:
+        res = supabase.table("produtos").select("id").limit(1).execute()
+        if not res.data:
+            lista_inicial = [
+                # 36Ah - 48Ah
+                {"categoria": "36Ah - 48Ah", "nome": "Heliar 48Ah", "marca": "Heliar", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "36Ah - 48Ah", "nome": "Moura 48Ah", "marca": "Moura", "amperagem": 48, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "36Ah - 48Ah", "nome": "Cral 45Ah", "marca": "Cral", "amperagem": 45, "preco": 420.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "36Ah - 48Ah", "nome": "KF 40Ah", "marca": "KF", "amperagem": 40, "preco": 250.00, "quantidade": 10, "meses_garantia": 12},
+                {"categoria": "36Ah - 48Ah", "nome": "Super Life 36Ah", "marca": "Super Life", "amperagem": 36, "preco": 220.00, "quantidade": 10, "meses_garantia": 12},
+
+                # 70Ah
+                {"categoria": "70Ah", "nome": "Heliar 70Ah", "marca": "Heliar", "amperagem": 70, "preco": 760.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "70Ah", "nome": "Moura 70Ah", "marca": "Moura", "amperagem": 70, "preco": 760.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "70Ah", "nome": "América 70Ah", "marca": "América", "amperagem": 70, "preco": 590.00, "quantidade": 10, "meses_garantia": 18},
+                {"categoria": "70Ah", "nome": "Cral 70Ah", "marca": "Cral", "amperagem": 70, "preco": 580.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "70Ah", "nome": "Super Life 70Ah", "marca": "Super Life", "amperagem": 70, "preco": 390.00, "quantidade": 10, "meses_garantia": 12},
+
+                # 75Ah
+                {"categoria": "75Ah", "nome": "Heliar 75Ah", "marca": "Heliar", "amperagem": 75, "preco": 790.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "75Ah", "nome": "Moura 75Ah", "marca": "Moura", "amperagem": 75, "preco": 790.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "75Ah", "nome": "Cral 75Ah", "marca": "Cral", "amperagem": 75, "preco": 580.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "75Ah", "nome": "KF 75Ah", "marca": "KF", "amperagem": 75, "preco": 490.00, "quantidade": 10, "meses_garantia": 12},
+
+                # 40Ah Slim JD
+                {"categoria": "40Slim JD", "nome": "Heliar 40 Slim JD", "marca": "Heliar", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "40Slim JD", "nome": "Moura 40 Slim JD", "marca": "Moura", "amperagem": 40, "preco": 590.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "40Slim JD", "nome": "Cral 40 Slim JD", "marca": "Cral", "amperagem": 40, "preco": 420.00, "quantidade": 10, "meses_garantia": 18},
+                {"categoria": "40Slim JD", "nome": "KF 40 Slim JD", "marca": "KF", "amperagem": 40, "preco": 350.00, "quantidade": 10, "meses_garantia": 12},
+
+                # 72Ah EFB Start Stop
+                {"categoria": "72Ah Start Stop", "nome": "Heliar 72Ah Start Stop", "marca": "Heliar", "amperagem": 72, "preco": 1150.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "72Ah Start Stop", "nome": "Moura 72Ah Start Stop", "marca": "Moura", "amperagem": 72, "preco": 1150.00, "quantidade": 10, "meses_garantia": 24},
+
+                # 90Ah
+                {"categoria": "90Ah", "nome": "Heliar 90Ah", "marca": "Heliar", "amperagem": 90, "preco": 970.00, "quantidade": 10, "meses_garantia": 15},
+                {"categoria": "90Ah", "nome": "Moura 90Ah", "marca": "Moura", "amperagem": 90, "preco": 970.00, "quantidade": 10, "meses_garantia": 12},
+                {"categoria": "90Ah", "nome": "Cral 90Ah", "marca": "Cral", "amperagem": 90, "preco": 690.00, "quantidade": 10, "meses_garantia": 15},
+                {"categoria": "90Ah", "nome": "Biachine 90Ah", "marca": "Biachine", "amperagem": 90, "preco": 590.00, "quantidade": 10, "meses_garantia": 12},
+
+                # 60Ah
+                {"categoria": "60Ah", "nome": "Heliar 60Ah", "marca": "Heliar", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "60Ah", "nome": "Moura 60Ah", "marca": "Moura", "amperagem": 60, "preco": 550.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "60Ah", "nome": "América 60Ah", "marca": "América", "amperagem": 60, "preco": 450.00, "quantidade": 10, "meses_garantia": 18},
+                {"categoria": "60Ah", "nome": "Cral 60Ah", "marca": "Cral", "amperagem": 60, "preco": 430.00, "quantidade": 10, "meses_garantia": 24},
+                {"categoria": "60Ah", "nome": "KF 60Ah", "marca": "KF", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
+                {"categoria": "60Ah", "nome": "Super Life 60Ah", "marca": "Super Life", "amperagem": 60, "preco": 330.00, "quantidade": 10, "meses_garantia": 12},
+            ]
+            supabase.table("produtos").insert(lista_inicial).execute()
+    except Exception as e:
+        st.error(f"Erro ao inicializar produtos: {e}")
+
+popular_baterias_iniciais()
 
 USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
@@ -172,7 +228,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("loo.png"):
+    if os.path.exists("logo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -268,7 +324,7 @@ if menu == "Nova Venda":
                 with col2:
                     cliente = st.text_input("Cliente")
                     cpf = st.text_input("CPF / CNPJ")
-                    veiculo_mod = st.text_input("Modelo do Veículo *", value=str(dados_p['veiculo'] or ''))
+                    veiculo_mod = st.text_input("Modelo do Veículo *", value=str(dados_p.get('veiculo') or ''))
                     placa = st.text_input("Placa")
                     serie = st.text_input("Nº Série Bateria")
 
@@ -312,7 +368,7 @@ elif menu == "Estoque Organizado":
     res = supabase.table("produtos").select("id, categoria, nome, marca, amperagem, preco, quantidade, meses_garantia").order("id").execute()
     df_estoque = pd.DataFrame(res.data)
     if not df_estoque.empty:
-        df_estoque.columns = ['ID', 'Categoria', 'Modelo', 'Marca', 'Amperagem', 'Preço', 'Estoque', 'Garantia']
+        df_estoque.columns = ['ID', 'Categoria', 'Modelo', 'Marca', 'Amperagem (Ah)', 'Preço (R$)', 'Estoque', 'Garantia (Meses)']
     st.dataframe(df_estoque, use_container_width=True, hide_index=True)
 
 # --- ABA 3: CONSULTAR GARANTIA ---
@@ -380,6 +436,7 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
         f_marca = st.text_input("Marca", value="Heliar")
         f_preco = st.number_input("Preço (R$)", value=400.0)
         f_qtd = st.number_input("Estoque Inicial", value=10)
+        f_garantia = st.number_input("Meses de Garantia", value=12)
         
         if st.form_submit_button("Cadastrar"):
             novo_prod = {
@@ -388,7 +445,8 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
                 "amperagem": int(f_amp),
                 "marca": f_marca,
                 "preco": float(f_preco),
-                "quantidade": int(f_qtd)
+                "quantidade": int(f_qtd),
+                "meses_garantia": int(f_garantia)
             }
             supabase.table("produtos").insert(novo_prod).execute()
             st.success("Cadastrado com sucesso no Supabase!")
