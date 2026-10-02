@@ -1,115 +1,0 @@
-SQLite format 3   @                                                                     .Š
- š Z
-hš
-q                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      …KŠqtablevendasvendasCREATE TABLE vendas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data_hora TEXT NOT NULL,
-            vendedor TEXT NOT NULL,
-            produto_nome TEXT NOT NULL,
-            quantidade INTEGER NOT NULL,
-            preco_original REAL NOT NULL,
-            desconto REAL NOT NULL,
-            valor_total REAL NOT NULL,
-            forma_pagamento TEXT NOT NULL,
-            cliente_nome TEXT,
-            cliente_cpf TEXT,
-            veiculo_placa TEXT,
-            veiculo_modelo TEXT DEFAULT '',
-            numero_serie TEXT,
-            parcelas TEXT DEFAULT '1x',
-            amperagem INTEGER DEFAULT 0,
-            meses_garantia INTEGER DEFAULT 12
-        )ƒ†	tableprodutosprodutosCREATE TABLE produtos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categoria TEXT NOT NULL,
-            nome TEXT NOT NULL,
-            amperagem INTEGER NOT NULL,
-            marca TEXT NOT NULL,
-            preco REAL NOT NULL,
-            quantidade INTEGER NOT NULL,
-            meses_garantia INTEGER DEFAULT 12,
-            veiculo TEXT DEFAULT ''
-        )¬kˆ}tablevendasvendasCREATE TABLE vendas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data_hora TEXT NOT NULL,
-            vendedor TEXT NOT NULL,
-            produto_nome TEXT NOT NULL,
-            quantidade INTEGER NOT NULL,
-            valor_total REAL NOT NULL,
-            forma_pagamento TEXT NOT NULL,
-            cliente_nome TEf''ƒtablegaleria_midiagaleria_midiaCREATE TABLE galeria_midia (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            categoria TEXT NOT NULL,
-            caminho TEXT NOT NULL
-        )P++Ytablesqlite_sequencesqlite_sequenceCREATE TABLE sqlite_sequence(name,seq)  T„utableprodutosprodutosCREATE TABLE produtos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            amperagem INTEGER NOT NULL,
-            marca TEXT NOT NULL,
-            preco REAL NOT NULL,
-            quantidade INTEGER NOT NULL,
-            meses_garantia INTEGER DEFAULT 12
-      
-   	@ Á„JÀo 
-Ó
-Ž
-Mü®bÒ’B
-û
-¶
-x
-B
- 	Ÿ	@                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ]
- 9?ALinha EFB / Start StopMoura 60Ah EFB Start Stop<Mouraz
-Renegade, Argo, Toro, Golf_
- 9AALinha EFB / Start StopHeliar 60Ah EFB Start Stop<Heliarz
-Renegade, Argo, Toro, Golf@
- +!370 AhSuper Life 70AhFSuper Life†
-SUVs e UtilitÃ¡rios4
- 370 AhCral 70AhFCralD
-SUVs e UtilitÃ¡rios<
- '370 AhAmÃ©rica 70AhFAmÃ©ricaN
-SUVs e UtilitÃ¡riosC
- !M70 AhMoura 70AhFMouraø
-SUVs, Pickups, Compass, RenegadeE
- #M70 AhHeliar 70AhFHeliarø
-SUVs, Pickups, Compass, RenegadeN
- '+!?60 Ah PadrÃ£oSuper Life 60Ah<Super LifeJ
-Carros de Passeio MÃ©dios>
- '?60 Ah PadrÃ£oKF 60Ah<KFJ
-Carros de Passeio MÃ©diosB
- '?60 Ah PadrÃ£oCral 60Ah<Cral®
-Carros de Passeio MÃ©diosJ
- ''?60 Ah PadrÃ£oAmÃ©rica 60Ah<AmÃ©ricaÂ
-Carros de Passeio MÃ©diosJ
- '!K60 Ah PadrÃ£oMoura 60Ah<Moura&
-Civic, Corolla, Onix, HB20, FoxL
- '#K60 Ah PadrÃ£oHeliar 60Ah<Heliar&
-Civic, Corolla, Onix, HB20, FoxO
- -A!%50 Ah Caixa AltaSuper Life 50Ah Caixa Alta2Super LifeJ
-Ford / Honda?
-
- -1%50 Ah Caixa AltaKF 52Ah Caixa Alta4KF^
-Ford / HondaC	
- -5%50 Ah Caixa AltaCral 52Ah Caixa Alta4Cral†
-Ford / HondaK
- -=%50 Ah Caixa AltaAmÃ©rica 50Ah Caixa Alta2AmÃ©ricaÖ
-Ford / HondaM
- -7550 Ah Caixa AltaMoura 50Ah Caixa Alta2Moura&
-Fiesta, EcoSport, KaO
- -9550 Ah Caixa AltaHeliar 50Ah Caixa Alta2Heliar&
-Fiesta, EcoSport, KaI
- )+!336/40/45/48 AhSuper Life 36Ah$Super Life Ü
-VeÃ­culos Populares=
- );36/40/45/48 AhKF 40Ah(KF ú
-Motos / VeÃ­culos Leves8
- ))36/40/45/48 AhCral 45Ah-Cral¤
-Celta, Ka, Fit;
- )!+36/40/45/48 AhMoura 48Ah0Moura&
-Gol, Palio, Uno=
- )#+36/40/45/48 AhHeliar 48Ah0Heliar&
-Gol, Palio, Uno
-   æ òæ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-vendasprodutos
-      d                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           3#	E))+)27/09/2026 10:20:17AtendenteHeliar 48Ah&&PIXConsumidor NÃ£o IdentificadoNÃ£o InformadoNÃ£o InformadoGol, Palio, UnoNÃ£o Informado1x0
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
