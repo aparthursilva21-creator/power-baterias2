@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização Dark
+# Estilização Dark + Responsividade Mobile
 st.markdown("""
     <style>
     .stApp {
@@ -35,9 +35,10 @@ st.markdown("""
         background-color: #28a745 !important;
         color: #ffffff !important;
         font-weight: bold !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
         border: none !important;
-        padding: 8px 16px !important;
+        padding: 10px 18px !important;
+        width: 100% !important;
     }
     .stButton>button:hover {
         background-color: #39ff14 !important;
@@ -45,12 +46,30 @@ st.markdown("""
     }
     [data-testid="stMetricValue"] {
         color: #39ff14 !important;
-        font-size: 2rem !important;
+        font-size: 1.8rem !important;
         font-weight: bold !important;
     }
     section[data-testid="stSidebar"] {
         background-color: #16191e !important;
         border-right: 1px solid #28a745;
+    }
+    /* Ajustes Finos para Telas de Celular (Mobile) */
+    @media (max-width: 768px) {
+        .stApp {
+            padding: 5px !important;
+        }
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+            margin-bottom: 10px !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.4rem !important;
+        }
+        .stDataFrame {
+            font-size: 12px !important;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -72,7 +91,7 @@ USUARIOS = {
     "wanderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Wanderson"},
 }
 
-CATEGORIAS_PADRAO = [
+CATEGORIAS_BASE = [
     "36Ah 40Ah 45Ah 48Ah",
     "60Ah",
     "70Ah",
@@ -81,6 +100,15 @@ CATEGORIAS_PADRAO = [
     "72Ah EFB Start Stop",
     "90Ah"
 ]
+
+def obter_todas_categorias():
+    try:
+        res = supabase.table("produtos").select("categoria").execute()
+        cats_banco = [r['categoria'] for r in res.data if r.get('categoria')]
+        lista_final = sorted(list(set(CATEGORIAS_BASE + cats_banco)))
+        return lista_final
+    except Exception:
+        return CATEGORIAS_BASE
 
 def gerador_pdf_nota(dados):
     if not REPORTLAB_DISPONIVEL:
@@ -228,7 +256,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("loo.png"):
+    if os.path.exists("logo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -264,15 +292,15 @@ def modal_gerar_pdf(dados_venda):
 
 @st.dialog("Confirmar Alterações da Bateria ⚠️")
 def modal_confirmar_edicao_bateria(id_sel, novos_dados):
-    st.warning("Tem certeza de que deseja atualizar as informações desta bateria?")
+    st.warning("Deseja realmente atualizar esta bateria?")
     st.write(f"**Modelo:** {novos_dados['nome']}")
     st.write(f"**Categoria:** {novos_dados['categoria']}")
     st.write(f"**Preço:** R$ {novos_dados['preco']:.2f}")
-    st.write(f"**Estoque:** {novos_dados['quantidade']} unidades")
+    st.write(f"**Estoque:** {novos_dados['quantidade']} un")
     
     if st.button("Sim, Confirmar Alteração", use_container_width=True):
         supabase.table("produtos").update(novos_dados).eq("id", id_sel).execute()
-        st.toast("Bateria atualizada no Supabase com sucesso!", icon="✅")
+        st.toast("Bateria atualizada no Supabase!", icon="✅")
         st.rerun()
 
 @st.dialog("Confirmar Exclusão de Bateria 🔴")
@@ -280,16 +308,45 @@ def modal_confirmar_exclusao_bateria(id_sel, nome_bateria):
     st.error(f"Deseja realmente excluir a bateria ID {id_sel} - {nome_bateria}?")
     if st.button("Sim, Excluir Bateria", use_container_width=True):
         supabase.table("produtos").delete().eq("id", id_sel).execute()
-        st.toast("Bateria excluída!", icon="🗑️")
+        st.toast("Bateria excluída!", icon="🗑️️")
         st.rerun()
 
 @st.dialog("Confirmar Cancelamento de Venda 🔴")
 def modal_confirmar_cancelamento_venda(id_venda, produto_nome, quantidade):
     st.error(f"Deseja realmente cancelar a Venda #{id_venda} ({produto_nome})?")
-    st.write("O valor será estornado e os itens retornarão ao estoque.")
+    st.write("O estoque será devolvido automaticamente.")
     if st.button("Sim, Cancelar Venda", use_container_width=True):
         cancelar_venda(id_venda, produto_nome, quantidade)
-        st.toast("Venda cancelada com sucesso!", icon="✅")
+        st.toast("Venda cancelada!", icon="✅")
+        st.rerun()
+
+@st.dialog("Editar Venda #{venda_id} ✏️")
+def modal_editar_venda(venda_dict):
+    venda_id = venda_dict['id']
+    st.subheader(f"Editando Venda #{venda_id}")
+    
+    e_cliente = st.text_input("Cliente", value=str(venda_dict.get('cliente_nome', '')))
+    e_cpf = st.text_input("CPF / CNPJ", value=str(venda_dict.get('cliente_cpf', '')))
+    e_modelo = st.text_input("Veículo", value=str(venda_dict.get('veiculo_modelo', '')))
+    e_placa = st.text_input("Placa", value=str(venda_dict.get('veiculo_placa', '')))
+    e_serie = st.text_input("Nº Série", value=str(venda_dict.get('numero_serie', '')))
+    
+    col_a, col_b = st.columns(2)
+    e_total = col_a.number_input("Valor Total (R$)", value=float(venda_dict.get('valor_total', 0.0)))
+    e_pag = col_b.selectbox("Pagamento", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"], index=["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"].index(venda_dict.get('forma_pagamento', 'PIX')))
+    
+    if st.button("Salvar Edição da Venda", use_container_width=True):
+        payload = {
+            "cliente_nome": e_cliente,
+            "cliente_cpf": e_cpf,
+            "veiculo_modelo": e_modelo,
+            "veiculo_placa": e_placa.upper(),
+            "numero_serie": e_serie.upper(),
+            "valor_total": float(e_total),
+            "forma_pagamento": e_pag
+        }
+        supabase.table("vendas").update(payload).eq("id", venda_id).execute()
+        st.toast("Venda atualizada com sucesso!", icon="✅")
         st.rerun()
 
 # --- MENU LATERAL ---
@@ -310,8 +367,6 @@ if "pagina_atual" not in st.session_state or st.session_state["pagina_atual"] no
 menu = st.sidebar.radio("Navegação", opcoes_menu, key="pagina_atual")
 
 st.sidebar.write("---")
-
-# Exibição do usuário logado no rodapé
 st.sidebar.markdown(f"🟢 **Conectado:** {st.session_state['vendedor_nome']} ({st.session_state['perfil']})")
 if st.sidebar.button("Sair", use_container_width=True):
     st.session_state["logado"] = False
@@ -339,13 +394,22 @@ if menu == "Nova Venda":
                 with col1:
                     qtd = st.number_input("Quantidade *", min_value=1, value=1)
                     preco_base = float(dados_p['preco'])
-                    st.info(f"Preço Tabela: R$ {preco_base:.2f}")
-                    ajuste_preco = st.number_input("Ajuste de Preço (R$)", value=0.0, step=5.0)
-                    valor_final = (preco_base * qtd) - ajuste_preco
-                    st.success(f"Valor Total Final: R$ {valor_final:.2f}")
+                    preco_tabela_total = preco_base * qtd
+                    st.info(f"Preço Tabela (Unidade): R$ {preco_base:.2f}")
+                    
+                    # Permite digitar o valor final praticado na venda
+                    valor_final = st.number_input("Valor Final Praticado (R$) *", value=float(preco_tabela_total), step=5.0)
+                    ajuste_desconto = preco_tabela_total - valor_final
+                    
+                    if ajuste_desconto > 0:
+                        st.caption(f"💡 Desconto concedido: R$ {ajuste_desconto:.2f}")
+                    elif ajuste_desconto < 0:
+                        st.caption(f"💡 Acréscimo aplicado: R$ {abs(ajuste_desconto):.2f}")
+
                     vendedor = st.text_input("Vendedor *", value=st.session_state.get("vendedor_nome", ""))
                     pagamento = st.selectbox("Pagamento *", ["PIX", "Cartão de Crédito", "Cartão de Débito", "Dinheiro"])
                     parcelas = st.selectbox("Parcelas", [f"{i}x" for i in range(1, 13)]) if pagamento == "Cartão de Crédito" else "1x"
+                
                 with col2:
                     cliente = st.text_input("Cliente")
                     cpf = st.text_input("CPF / CNPJ")
@@ -368,7 +432,7 @@ if menu == "Nova Venda":
                             "produto_nome": dados_p['nome'],
                             "quantidade": int(qtd),
                             "preco_original": float(preco_base),
-                            "desconto": float(ajuste_preco),
+                            "desconto": float(ajuste_desconto),
                             "valor_total": float(valor_final),
                             "forma_pagamento": pagamento,
                             "cliente_nome": cliente or "Consumidor Não Identificado",
@@ -383,7 +447,7 @@ if menu == "Nova Venda":
                         insert_res = supabase.table("vendas").insert(venda_payload).execute()
                         id_venda = insert_res.data[0]['id'] if insert_res.data else 0
 
-                        modal_gerar_pdf({'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_preco, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
+                        modal_gerar_pdf({'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_desconto, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
 elif menu == "Estoque Organizado":
@@ -407,7 +471,7 @@ elif menu == "Estoque Organizado":
     else:
         st.info("Nenhuma bateria cadastrada no estoque.")
 
-# --- ABA 3: CONSULTAR GARANTIA DETALHADA ---
+# --- ABA 3: CONSULTAR GARANTIA ---
 elif menu == "Consultar Garantia":
     st.header("Consulta de Garantias")
     res_v = supabase.table("vendas").select("*").order("id", desc=True).execute()
@@ -458,9 +522,9 @@ elif menu == "Consultar Garantia":
 
                 col_c.write(f"**Bateria:** {r['produto_nome']}")
                 col_c.write(f"**Garantia Total:** {meses_gar} meses")
-                col_c.write(f"**Status da Garantia:** {status_garantia}")
+                col_c.write(f"**Status:** {status_garantia}")
 
-# --- ABA 4: EDITAR BATERIAS (COM POP-UP DE CONFIRMAÇÃO) ---
+# --- ABA 4: EDITAR BATERIAS ---
 elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     st.header("Editar ou Excluir Baterias")
     res = supabase.table("produtos").select("*").order("id").execute()
@@ -476,17 +540,15 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
             id_sel = int(sel.split(" ")[1])
             item = df_prods[df_prods['id'] == id_sel].iloc[0]
 
-            cats_banco = sorted(df_prods['categoria'].dropna().unique().tolist())
-            lista_cats = list(set(CATEGORIAS_PADRAO + cats_banco))
-            
+            lista_cats = obter_todas_categorias()
             cat_atual = str(item.get('categoria', '60Ah'))
             idx_cat = lista_cats.index(cat_atual) if cat_atual in lista_cats else 0
 
             col_cat, col_nome = st.columns(2)
-            e_categoria_sel = col_cat.selectbox("Categoria", lista_cats + ["+ Outra Categoria"], index=idx_cat)
+            e_categoria_sel = col_cat.selectbox("Categoria", lista_cats + ["+ Criar Nova Categoria"], index=idx_cat)
             
-            if e_categoria_sel == "+ Outra Categoria":
-                e_categoria = col_cat.text_input("Digite a Nova Categoria")
+            if e_categoria_sel == "+ Criar Nova Categoria":
+                e_categoria = col_cat.text_input("Nome da Nova Categoria")
             else:
                 e_categoria = e_categoria_sel
 
@@ -517,7 +579,7 @@ elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
             if col_btn2.button("Excluir Bateria 🔴", use_container_width=True):
                 modal_confirmar_exclusao_bateria(id_sel, e_nome)
 
-# --- ABA 5: HISTÓRICO DE VENDAS ---
+# --- ABA 5: HISTÓRICO COM BOTÃO EDITAR VENDA PARA ADM ---
 elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
     st.header("Histórico de Vendas")
     res = supabase.table("vendas").select("*").order("id", desc=True).execute()
@@ -527,7 +589,7 @@ elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
         st.info("Nenhuma venda registrada no histórico.")
     else:
         for _, v in df_hist.iterrows():
-            c1, c2, c3, c4, c5, c6 = st.columns([1, 2.5, 2, 1.5, 1.5, 1.5])
+            c1, c2, c3, c4, c5, c6, c7 = st.columns([1, 2, 2, 1.5, 1.2, 1.2, 1.2])
             c1.write(f"**#{v['id']}**")
             c2.write(f"**{v['cliente_nome']}**<br/>{v['produto_nome']}", unsafe_allow_html=True)
             c3.write(f"Data: {v['data_hora']}<br/>Placa: {v.get('veiculo_placa', 'N/A')}", unsafe_allow_html=True)
@@ -536,11 +598,14 @@ elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
             if c5.button("📄 PDF", key=f"pdf_{v['id']}"):
                 modal_gerar_pdf(dict(v))
                 
-            if c6.button("🔴 Cancelar", key=f"canc_{v['id']}"):
+            if c6.button("✏️ Editar", key=f"edit_v_{v['id']}"):
+                modal_editar_venda(dict(v))
+
+            if c7.button("🔴 Cancelar", key=f"canc_{v['id']}"):
                 modal_confirmar_cancelamento_venda(v['id'], v['produto_nome'], int(v['quantidade']))
             st.divider()
 
-# --- ABA 6: FECHAMENTO DE CAIXA DIÁRIO (NOVA) ---
+# --- ABA 6: FECHAMENTO DE CAIXA DIÁRIO ---
 elif menu == "Caixa Diário" and st.session_state["perfil"] == "ADM":
     st.header("Fechamento de Caixa Diário")
     data_filtro = st.date_input("Selecione a Data:", datetime.now())
@@ -591,15 +656,19 @@ elif menu == "Caixa Diário" and st.session_state["perfil"] == "ADM":
 # --- ABA 7: PAINEL ADM ---
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
     st.header("Cadastrar Nova Bateria")
+    
+    lista_cats = obter_todas_categorias()
+    
     with st.form("cad_manual"):
         col_cat, col_nome = st.columns(2)
-        f_cat_sel = col_cat.selectbox("Categoria", CATEGORIAS_PADRAO + ["+ Outra Categoria"])
-        if f_cat_sel == "+ Outra Categoria":
-            f_cat = col_cat.text_input("Digite a Nova Categoria")
+        f_cat_sel = col_cat.selectbox("Categoria", lista_cats + ["+ Criar Nova Categoria"])
+        
+        if f_cat_sel == "+ Criar Nova Categoria":
+            f_cat = col_cat.text_input("Nome da Nova Categoria *")
         else:
             f_cat = f_cat_sel
 
-        f_nome = col_nome.text_input("Nome do Modelo")
+        f_nome = col_nome.text_input("Nome do Modelo *")
         
         col1, col2, col3 = st.columns(3)
         f_amp = col1.number_input("Amperagem", value=60)
@@ -611,15 +680,18 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
         f_garantia = col5.number_input("Meses de Garantia", value=12)
         
         if st.form_submit_button("Cadastrar Bateria", use_container_width=True):
-            novo_prod = {
-                "categoria": f_cat.strip(),
-                "nome": f_nome.strip(),
-                "amperagem": int(f_amp),
-                "marca": f_marca.strip(),
-                "preco": float(f_preco),
-                "quantidade": int(f_qtd),
-                "meses_garantia": int(f_garantia)
-            }
-            supabase.table("produtos").insert(novo_prod).execute()
-            st.success("Bateria cadastrada no Supabase com sucesso!")
-            st.rerun()
+            if not f_cat.strip() or not f_nome.strip():
+                st.error("Preencha Categoria e Nome do Modelo!")
+            else:
+                novo_prod = {
+                    "categoria": f_cat.strip(),
+                    "nome": f_nome.strip(),
+                    "amperagem": int(f_amp),
+                    "marca": f_marca.strip(),
+                    "preco": float(f_preco),
+                    "quantidade": int(f_qtd),
+                    "meses_garantia": int(f_garantia)
+                }
+                supabase.table("produtos").insert(novo_prod).execute()
+                st.success(f"Bateria '{f_nome}' cadastrada na categoria '{f_cat}' com sucesso!")
+                st.rerun()
