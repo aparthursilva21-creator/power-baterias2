@@ -56,8 +56,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- CONEXÃO COM SUPABASE ---
-SUPABASE_URL = "https://wyasprljxwtilqdystjw.supabase.co"
-SUPABASE_KEY = "sb_publishable_AAAhxFGd3t1164orKxJZFg_d4GHYsIJ"
+SUPABASE_URL = "https://pzyxmzhfqzfebzxpgkyy.supabase.co"
+SUPABASE_KEY = "sb_publishable_aKrPEl7lz13LDqTSKcRghg_3Wugc8Ul"
 
 @st.cache_resource
 def init_supabase():
