@@ -1,6 +1,4 @@
 streamlit
+supabase
 pandas
-sqlalchemy
-psycopg2-binary
-psycopg[binary]
 reportlab
