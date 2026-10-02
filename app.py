@@ -1,9 +1,9 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 from io import BytesIO
+from supabase import create_client, Client
 
 try:
     from reportlab.lib.pagesizes import letter
@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização Dark
+# Estilização Dark[cite: 13]
 st.markdown("""
     <style>
     .stApp {
@@ -55,7 +55,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-DB_NAME = "power_baterias_novo.db"
+# --- CONEXÃO COM SUPABASE ---
+SUPABASE_URL = "https://wyasprljxwtilqdystjw.supabase.co"
+SUPABASE_KEY = "sb_publishable_AAAhxFGd3t1164orKxJZFg_d4GHYsIJ"
+
+@st.cache_resource
+def init_supabase():
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase = init_supabase()
 
 USUARIOS = {
     "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
@@ -63,55 +71,6 @@ USUARIOS = {
     "pedro": {"senha": "Pedro1234", "perfil": "Vendedor", "nome": "Pedro"},
     "wanderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Wanderson"},
 }
-
-def inicializar_banco():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS produtos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categoria TEXT NOT NULL DEFAULT 'Geral',
-            nome TEXT NOT NULL,
-            amperagem INTEGER NOT NULL DEFAULT 0,
-            marca TEXT NOT NULL DEFAULT '',
-            preco REAL NOT NULL DEFAULT 0.0,
-            quantidade INTEGER NOT NULL DEFAULT 0,
-            meses_garantia INTEGER DEFAULT 12,
-            veiculo TEXT DEFAULT ''
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS vendas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data_hora TEXT NOT NULL,
-            vendedor TEXT NOT NULL,
-            produto_nome TEXT NOT NULL,
-            quantidade INTEGER NOT NULL,
-            preco_original REAL NOT NULL DEFAULT 0.0,
-            desconto REAL NOT NULL DEFAULT 0.0,
-            valor_total REAL NOT NULL DEFAULT 0.0,
-            forma_pagamento TEXT NOT NULL,
-            cliente_nome TEXT DEFAULT 'Consumidor Não Identificado',
-            cliente_cpf TEXT DEFAULT 'Não Informado',
-            veiculo_placa TEXT DEFAULT 'Não Informado',
-            veiculo_modelo TEXT DEFAULT 'Não Informado',
-            numero_serie TEXT DEFAULT 'Não Informado',
-            parcelas TEXT DEFAULT '1x',
-            amperagem INTEGER DEFAULT 0,
-            meses_garantia INTEGER DEFAULT 12
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS fechamento_caixa (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data_fechamento TEXT NOT NULL,
-            responsavel TEXT NOT NULL,
-            total_faturado REAL NOT NULL,
-            total_vendas INTEGER NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
 
 def gerador_pdf_nota(dados):
     if not REPORTLAB_DISPONIVEL:
@@ -197,21 +156,13 @@ def gerador_pdf_nota(dados):
     return buffer
 
 def cancelar_venda(id_venda, produto_nome, quantidade):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("UPDATE produtos SET quantidade = quantidade + ? WHERE nome = ?", (quantidade, produto_nome))
-    c.execute("DELETE FROM vendas WHERE id = ?", (id_venda,))
-    conn.commit()
-    conn.close()
-
-def excluir_bateria(id_bateria):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("DELETE FROM produtos WHERE id = ?", (id_bateria,))
-    conn.commit()
-    conn.close()
-
-inicializar_banco()
+    # Devolve quantidade ao estoque
+    prod = supabase.table("produtos").select("quantidade").eq("nome", produto_nome).execute()
+    if prod.data:
+        nova_qtd = prod.data[0]["quantidade"] + quantidade
+        supabase.table("produtos").update({"quantidade": nova_qtd}).eq("nome", produto_nome).execute()
+    # Apaga venda
+    supabase.table("vendas").delete().eq("id", id_venda).execute()
 
 # --- LOGIN ---
 if "logado" not in st.session_state:
@@ -273,7 +224,7 @@ st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
 
 opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia"]
 if st.session_state["perfil"] == "ADM":
-    opcoes_menu += ["Fechamento de Caixa", "Editar Baterias", "Histórico", "Painel ADM"]
+    opcoes_menu += ["Editar Baterias", "Histórico", "Painel ADM"]
 
 if "pagina_atual" not in st.session_state or st.session_state["pagina_atual"] not in opcoes_menu:
     st.session_state["pagina_atual"] = opcoes_menu[0]
@@ -288,9 +239,8 @@ if st.sidebar.button("Sair"):
 # --- ABA 1: NOVA VENDA ---
 if menu == "Nova Venda":
     st.header("Lançamento de Venda")
-    conn = sqlite3.connect(DB_NAME)
-    df_prods = pd.read_sql_query("SELECT id, nome, amperagem, preco, quantidade, meses_garantia, veiculo FROM produtos", conn)
-    conn.close()
+    res = supabase.table("produtos").select("id, nome, amperagem, preco, quantidade, meses_garantia, veiculo").execute()
+    df_prods = pd.DataFrame(res.data)
 
     if df_prods.empty:
         st.warning("Nenhuma bateria no estoque!")
@@ -327,71 +277,104 @@ if menu == "Nova Venda":
                         st.error("Preencha Vendedor e Veículo!")
                     else:
                         dt_hoje = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                        conn = sqlite3.connect(DB_NAME)
-                        c = conn.cursor()
-                        c.execute("UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?", (qtd, id_prod))
-                        c.execute("""
-                            INSERT INTO vendas (data_hora, vendedor, produto_nome, quantidade, preco_original, desconto, valor_total, forma_pagamento, cliente_nome, cliente_cpf, veiculo_placa, veiculo_modelo, numero_serie, parcelas, amperagem, meses_garantia)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (dt_hoje, vendedor.strip(), dados_p['nome'], qtd, preco_base, ajuste_preco, valor_final, pagamento, cliente or "Consumidor Não Identificado", cpf or "Não Informado", placa.upper() or "Não Informado", veiculo_mod.strip(), serie.upper() or "Não Informado", parcelas, dados_p['amperagem'], dados_p['meses_garantia']))
-                        id_venda = c.lastrowid
-                        conn.commit()
-                        conn.close()
+                        
+                        # Atualiza estoque no Supabase
+                        nova_qtd = int(dados_p['quantidade']) - qtd
+                        supabase.table("produtos").update({"quantidade": nova_qtd}).eq("id", id_prod).execute()
+                        
+                        # Insere venda no Supabase
+                        venda_payload = {
+                            "data_hora": dt_hoje,
+                            "vendedor": vendedor.strip(),
+                            "produto_nome": dados_p['nome'],
+                            "quantidade": int(qtd),
+                            "preco_original": float(preco_base),
+                            "desconto": float(ajuste_preco),
+                            "valor_total": float(valor_final),
+                            "forma_pagamento": pagamento,
+                            "cliente_nome": cliente or "Consumidor Não Identificado",
+                            "cliente_cpf": cpf or "Não Informado",
+                            "veiculo_placa": placa.upper() or "Não Informado",
+                            "veiculo_modelo": veiculo_mod.strip(),
+                            "numero_serie": serie.upper() or "Não Informado",
+                            "parcelas": parcelas,
+                            "amperagem": int(dados_p['amperagem']),
+                            "meses_garantia": int(dados_p['meses_garantia'])
+                        }
+                        insert_res = supabase.table("vendas").insert(venda_payload).execute()
+                        id_venda = insert_res.data[0]['id'] if insert_res.data else 0
 
                         modal_gerar_pdf({'id': id_venda, 'data_hora': dt_hoje, 'vendedor': vendedor.strip(), 'cliente_nome': cliente or "Consumidor Não Identificado", 'cliente_cpf': cpf or "Não Informado", 'veiculo_placa': placa.upper() or "Não Informado", 'veiculo_modelo': veiculo_mod.strip(), 'numero_serie': serie.upper() or "Não Informado", 'produto_nome': dados_p['nome'], 'amperagem': dados_p['amperagem'], 'quantidade': qtd, 'preco_original': preco_base, 'desconto': ajuste_preco, 'valor_total': valor_final, 'forma_pagamento': pagamento, 'parcelas': parcelas, 'meses_garantia': dados_p['meses_garantia']})
 
 # --- ABA 2: ESTOQUE ORGANIZADO ---
 elif menu == "Estoque Organizado":
     st.header("Estoque Geral")
-    conn = sqlite3.connect(DB_NAME)
-    df_estoque = pd.read_sql_query("SELECT id, categoria as Categoria, nome as Modelo, marca as Marca, amperagem as Amperagem, preco as Preço, quantidade as Estoque, meses_garantia as Garantia FROM produtos ORDER BY id ASC", conn)
-    conn.close()
+    res = supabase.table("produtos").select("id, categoria, nome, marca, amperagem, preco, quantidade, meses_garantia").order("id").execute()
+    df_estoque = pd.DataFrame(res.data)
+    if not df_estoque.empty:
+        df_estoque.columns = ['ID', 'Categoria', 'Modelo', 'Marca', 'Amperagem', 'Preço', 'Estoque', 'Garantia']
     st.dataframe(df_estoque, use_container_width=True, hide_index=True)
 
-# --- ABA 3: EDITAR BATERIAS ---
+# --- ABA 3: CONSULTAR GARANTIA ---
+elif menu == "Consultar Garantia":
+    st.header("Consulta de Garantias")
+    busca = st.text_input("Digite o CPF, Placa, Série ou Nome do Cliente:")
+    if busca:
+        res = supabase.table("vendas").select("*").execute()
+        df_v = pd.DataFrame(res.data)
+        if not df_v.empty:
+            df_fil = df_v[
+                df_v['cliente_nome'].str.contains(busca, case=False, na=False) |
+                df_v['cliente_cpf'].str.contains(busca, case=False, na=False) |
+                df_v['veiculo_placa'].str.contains(busca, case=False, na=False) |
+                df_v['numero_serie'].str.contains(busca, case=False, na=False)
+            ]
+            st.dataframe(df_fil, use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum registro encontrado.")
+
+# --- ABA 4: EDITAR BATERIAS ---
 elif menu == "Editar Baterias" and st.session_state["perfil"] == "ADM":
     st.header("Editar ou Excluir Baterias")
-    conn = sqlite3.connect(DB_NAME)
-    df_prods = pd.read_sql_query("SELECT * FROM produtos ORDER BY id ASC", conn)
-    conn.close()
+    res = supabase.table("produtos").select("*").order("id").execute()
+    df_prods = pd.DataFrame(res.data)
 
-    opcoes = ["-- Selecione --"] + [f"ID {row['id']} - {row['nome']}" for _, row in df_prods.iterrows()]
-    sel = st.selectbox("Escolha a bateria:", opcoes)
-    
-    if sel != "-- Selecione --":
-        id_sel = int(sel.split(" ")[1])
-        item = df_prods[df_prods['id'] == id_sel].iloc[0]
-
-        e_nome = st.text_input("Nome", value=item['nome'])
-        col1, col2 = st.columns(2)
-        e_preco = col1.number_input("Preço R$", value=float(item['preco']))
-        e_qtd = col2.number_input("Estoque", value=int(item['quantidade']))
+    if df_prods.empty:
+        st.info("Nenhuma bateria cadastrada.")
+    else:
+        opcoes = ["-- Selecione --"] + [f"ID {row['id']} - {row['nome']}" for _, row in df_prods.iterrows()]
+        sel = st.selectbox("Escolha a bateria:", opcoes)
         
-        if st.button("Salvar Alterações"):
-            conn = sqlite3.connect(DB_NAME)
-            c = conn.cursor()
-            c.execute("UPDATE produtos SET nome = ?, preco = ?, quantidade = ? WHERE id = ?", (e_nome, e_preco, e_qtd, id_sel))
-            conn.commit()
-            conn.close()
-            st.success("Bateria atualizada!")
-            st.rerun()
+        if sel != "-- Selecione --":
+            id_sel = int(sel.split(" ")[1])
+            item = df_prods[df_prods['id'] == id_sel].iloc[0]
 
-# --- ABA 4: HISTÓRICO ---
+            e_nome = st.text_input("Nome", value=item['nome'])
+            col1, col2 = st.columns(2)
+            e_preco = col1.number_input("Preço R$", value=float(item['preco']))
+            e_qtd = col2.number_input("Estoque", value=int(item['quantidade']))
+            
+            if st.button("Salvar Alterações"):
+                supabase.table("produtos").update({"nome": e_nome, "preco": e_preco, "quantidade": e_qtd}).eq("id", id_sel).execute()
+                st.success("Bateria atualizada com sucesso!")
+                st.rerun()
+
+# --- ABA 5: HISTÓRICO ---
 elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
     st.header("Histórico de Vendas")
-    conn = sqlite3.connect(DB_NAME)
-    df_hist = pd.read_sql_query("SELECT * FROM vendas ORDER BY id DESC", conn)
-    conn.close()
+    res = supabase.table("vendas").select("*").order("id", desc=True).execute()
+    df_hist = pd.DataFrame(res.data)
     
     if df_hist.empty:
         st.info("Nenhuma venda registrada.")
     else:
         st.dataframe(df_hist[['id', 'data_hora', 'vendedor', 'produto_nome', 'quantidade', 'valor_total', 'forma_pagamento', 'cliente_nome']], use_container_width=True, hide_index=True)
 
-# --- ABA 5: PAINEL ADM ---
+# --- ABA 6: PAINEL ADM ---
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
     st.header("Cadastrar Nova Bateria")
     with st.form("cad_manual"):
+        f_cat = st.text_input("Categoria", value="Geral")
         f_nome = st.text_input("Nome do Modelo")
         f_amp = st.number_input("Amperagem", value=60)
         f_marca = st.text_input("Marca", value="Heliar")
@@ -399,10 +382,14 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
         f_qtd = st.number_input("Estoque Inicial", value=10)
         
         if st.form_submit_button("Cadastrar"):
-            conn = sqlite3.connect(DB_NAME)
-            c = conn.cursor()
-            c.execute("INSERT INTO produtos (nome, amperagem, marca, preco, quantidade) VALUES (?, ?, ?, ?, ?)", (f_nome, f_amp, f_marca, f_preco, f_qtd))
-            conn.commit()
-            conn.close()
-            st.success("Cadastrado com sucesso!")
+            novo_prod = {
+                "categoria": f_cat,
+                "nome": f_nome,
+                "amperagem": int(f_amp),
+                "marca": f_marca,
+                "preco": float(f_preco),
+                "quantidade": int(f_qtd)
+            }
+            supabase.table("produtos").insert(novo_prod).execute()
+            st.success("Cadastrado com sucesso no Supabase!")
             st.rerun()
