@@ -84,7 +84,7 @@ def init_supabase():
 supabase = init_supabase()
 
 USUARIOS = {
-    "arthur": {"senha": "Arthur123", "perfil": "ADM", "nome": "Arthur"},
+    "arthur": {"senha": "963258", "perfil": "ADM", "nome": "Arthur"},
     "sandro": {"senha": "963258", "perfil": "ADM", "nome": "Sandro"},
     "pedro": {"senha": "Pedro1234", "perfil": "Vendedor", "nome": "Pedro"},
     "wanderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Wanderson"},
