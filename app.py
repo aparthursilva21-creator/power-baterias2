@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import os
 from io import BytesIO
 from supabase import create_client, Client
@@ -13,6 +14,9 @@ try:
     REPORTLAB_DISPONIVEL = True
 except ImportError:
     REPORTLAB_DISPONIVEL = False
+
+def obter_agora_brasilia():
+    return datetime.now(ZoneInfo("America/Sao_Paulo"))
 
 st.set_page_config(
     page_title="Power Baterias",
@@ -210,7 +214,7 @@ def gerador_pdf_caixa(data_ref, df_vendas, total_faturado):
     topo = [
         [
             Paragraph("<b>POWER BATERIAS - FECHAMENTO DE CAIXA</b>", header_title),
-            Paragraph(f"<b>Data:</b> {data_ref}<br/><b>Emissão:</b> {datetime.now().strftime('%H:%M:%S')}", body_style)
+            Paragraph(f"<b>Data:</b> {data_ref}<br/><b>Emissão:</b> {obter_agora_brasilia().strftime('%H:%M:%S')}", body_style)
         ]
     ]
     story.append(Table(topo, colWidths=[340, 200]))
@@ -297,7 +301,7 @@ def modal_gerar_pdf(dados_venda):
         pdf_bytes = gerador_pdf_nota(dados_venda)
         st.download_button("📄 Baixar Nota Fiscal (PDF)", data=pdf_bytes, file_name=f"nota_{dados_venda['id']}.pdf", mime="application/pdf", use_container_width=True)
 
-@st.dialog("Confirmar Alterações da Bateria ⚠️️")
+@st.dialog("Confirmar Alterações da Bateria ⚠")
 def modal_confirmar_edicao_bateria(id_sel, novos_dados):
     st.warning("Deseja realmente atualizar esta bateria?")
     st.write(f"**Modelo:** {novos_dados['nome']}")
@@ -439,14 +443,15 @@ if menu == "Nova Venda":
                 serie = st.text_input("Nº Série Bateria")
 
             # Alternador de Data Instantâneo para ADM
-            dt_venda_final = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            agora = obter_agora_brasilia()
+            dt_venda_final = agora.strftime("%d/%m/%Y %H:%M:%S")
             if st.session_state.get("perfil") == "ADM":
                 st.write("---")
                 alterar_data = st.checkbox("Deseja alterar a data/hora da venda? (Exclusivo ADM)", key="chk_alterar_data")
                 if alterar_data:
                     col_dt1, col_dt2 = st.columns(2)
-                    data_custom = col_dt1.date_input("Data da Venda", datetime.now(), key="dt_custom")
-                    hora_custom = col_dt2.time_input("Hora da Venda", datetime.now().time(), key="hr_custom")
+                    data_custom = col_dt1.date_input("Data da Venda", agora, key="dt_custom")
+                    hora_custom = col_dt2.time_input("Hora da Venda", agora.time(), key="hr_custom")
                     dt_venda_final = f"{data_custom.strftime('%d/%m/%Y')} {hora_custom.strftime('%H:%M:%S')}"
 
             st.write("")
@@ -525,13 +530,14 @@ elif menu == "Consultar Garantia":
 
         st.subheader("Últimas Vendas / Status da Garantia")
         
+        agora_sp = obter_agora_brasilia()
         for _, r in df_exibir.iterrows():
             dt_venda_str = r['data_hora']
             meses_gar = int(r.get('meses_garantia', 12) or 12)
             
             try:
                 dt_venda = datetime.strptime(dt_venda_str.split()[0], "%d/%m/%Y")
-                meses_passados = (datetime.now().year - dt_venda.year) * 12 + (datetime.now().month - dt_venda.month)
+                meses_passados = (agora_sp.year - dt_venda.year) * 12 + (agora_sp.month - dt_venda.month)
                 meses_restantes = meses_gar - meses_passados
                 
                 if meses_restantes > 0:
@@ -648,7 +654,7 @@ elif menu == "Histórico" and st.session_state["perfil"] == "ADM":
 # --- ABA 6: FECHAMENTO DE CAIXA DIÁRIO ---
 elif menu == "Caixa Diário" and st.session_state["perfil"] == "ADM":
     st.header("Fechamento de Caixa Diário")
-    data_filtro = st.date_input("Selecione a Data:", datetime.now())
+    data_filtro = st.date_input("Selecione a Data:", obter_agora_brasilia())
     data_str = data_filtro.strftime("%d/%m/%Y")
 
     res = supabase.table("vendas").select("*").execute()
