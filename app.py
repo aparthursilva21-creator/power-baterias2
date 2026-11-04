@@ -117,8 +117,8 @@ def registrar_log(acao, detalhes, nivel="INFO"):
             "nivel": nivel
         }
         supabase.table("logs").insert(payload).execute()
-    except Exception as e:
-        print(f"Erro ao gravar log: {e}")
+    except Exception:
+        pass
 
 def obter_todas_categorias():
     try:
@@ -290,7 +290,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("logo.png"):
+    if os.path.exists("lgo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -801,7 +801,7 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
             )
             st.rerun()
 
-# --- ABA EXCLUSIVA DE LOGS ---
+# --- ABA EXCLUSIVA DE LOGS (EXIBIÇÃO COMPACTA COM EXPANDER) ---
 elif menu == "Auditoria & Logs" and st.session_state["perfil"] == "LOGS":
     st.header("📋 Registro de Auditoria & Logs do Sistema")
     st.info("Acesso exclusivo para auditoria de ações realizadas pelos usuários.")
@@ -813,7 +813,16 @@ elif menu == "Auditoria & Logs" and st.session_state["perfil"] == "LOGS":
         if df_logs.empty:
             st.warning("Nenhum registro de log encontrado até o momento.")
         else:
-            df_logs.columns = ['ID', 'Data/Hora', 'Usuário Responsável', 'Ação Realizada', 'Detalhes', 'Nível']
-            st.dataframe(df_logs[['ID', 'Data/Hora', 'Usuário Responsável', 'Ação Realizada', 'Detalhes', 'Nível']], use_container_width=True, hide_index=True)
-    except Exception as e:
-        st.error(f"Erro ao carregar logs do Supabase: {e}")
+            for _, row in df_logs.iterrows():
+                icone = "🔴" if row.get('nivel') == "PERIGO" else ("🟡" if row.get('nivel') == "AVISO" else "🔵")
+                titulo_expander = f"{icone} [{row.get('data_hora')}] {row.get('usuario')} - {row.get('acao')}"
+                
+                with st.expander(titulo_expander):
+                    st.write(f"**ID do Log:** #{row.get('id')}")
+                    st.write(f"**Data e Hora:** {row.get('data_hora')}")
+                    st.write(f"**Usuário Responsável:** {row.get('usuario')}")
+                    st.write(f"**Ação Realizada:** {row.get('acao')}")
+                    st.write(f"**Nível:** {row.get('nivel')}")
+                    st.write(f"**Detalhes Completos:** {row.get('detalhes')}")
+    except Exception:
+        st.warning("A tabela de logs ainda não foi criada no Supabase. Crie a tabela 'logs' para visualizar o histórico.")
