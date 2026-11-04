@@ -116,9 +116,11 @@ def registrar_log(acao, detalhes, nivel="INFO"):
             "detalhes": detalhes,
             "nivel": nivel
         }
-        supabase.table("logs").insert(payload).execute()
+        res = supabase.table("logs").insert(payload).execute()
+        if res.data:
+            st.toast("Log gravado com sucesso!", icon="📋")
     except Exception as e:
-        print(f"Erro log: {e}")
+        st.error(f"Erro ao salvar log: {e}")
 
 def obter_todas_categorias():
     try:
@@ -268,30 +270,45 @@ def gerador_pdf_caixa(data_ref, df_vendas, total_faturado):
     buffer.seek(0)
     return buffer
 
-def gerador_pdf_mensal(mes_ano, df_vendas, total_faturado, qtd_baterias):
+def gerador_pdf_mensal(mes_ano, df_mes, total_fat, qtd_bat):
     if not REPORTLAB_DISPONIVEL:
         return None
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     story = []
     styles = getSampleStyleSheet()
-    header_title = ParagraphStyle('HeaderTitle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor('#28a745'))
-    
-    story.append(Paragraph(f"<b>POWER BATERIAS - RELATÓRIO MENSAL ({mes_ano})</b>", header_title))
-    story.append(Spacer(1, 15))
-    
-    story.append(Paragraph(f"<b>Faturamento Total:</b> R$ {total_faturado:.2f}", styles['Normal']))
-    story.append(Paragraph(f"<b>Baterias Vendidas:</b> {qtd_baterias} unidades", styles['Normal']))
-    story.append(Spacer(1, 15))
+    header_title = ParagraphStyle('HeaderTitle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor('#28a745'), alignment=1)
+    body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14)
+    body_bold = ParagraphStyle('BodyBold', parent=styles['Normal'], fontSize=10, leading=14, fontName='Helvetica-Bold')
 
-    df_agrupado = df_vendas.groupby("produto_nome").agg(
-        Quantidade=("quantidade", "sum"), Faturamento=("valor_total", "sum")
-    ).reset_index().sort_values(by="Quantidade", ascending=False)
-
-    table_data = [[Paragraph("<b>Modelo / Bateria</b>"), Paragraph("<b>Qtd Vendida</b>"), Paragraph("<b>Faturamento</b>")]]
+    story.append(Paragraph(f"<b>POWER BATERIAS - RELATÓRIO MENSAL DE VENDAS ({mes_ano})</b>", header_title))
+    story.append(Spacer(1, 20))
+    
+    # Resumo do Mês
+    resumo_data = [
+        [Paragraph("<b>Faturamento Total:</b>", body_bold), Paragraph(f"R$ {total_fat:.2f}", body_style)],
+        [Paragraph("<b>Total de Baterias Vendidas:</b>", body_bold), Paragraph(f"{qtd_bat} unidades", body_style)],
+        [Paragraph("<b>Ticket Médio:</b>", body_bold), Paragraph(f"R$ {(total_fat/qtd_bat if qtd_bat > 0 else 0):.2f}", body_style)]
+    ]
+    t_resumo = Table(resumo_data, colWidths=[200, 150])
+    t_resumo.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8f9fa')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#28a745')),
+        ('PADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(t_resumo)
+    story.append(Spacer(1, 20))
+    
+    story.append(Paragraph("<b>Baterias Mais Vendidas no Período:</b>", body_bold))
+    story.append(Spacer(1, 10))
+    
+    table_data = [[Paragraph("<b>Modelo / Bateria</b>", body_bold), Paragraph("<b>Qtd Vendida</b>", body_bold), Paragraph("<b>Faturamento Gerado</b>", body_bold)]]
+    
+    df_agrupado = df_mes.groupby("produto_nome").agg(Quantidade=("quantidade", "sum"), Faturamento=("valor_total", "sum")).reset_index().sort_values(by="Quantidade", ascending=False)
+    
     for _, r in df_agrupado.iterrows():
         table_data.append([str(r['produto_nome']), str(r['Quantidade']), f"R$ {float(r['Faturamento']):.2f}"])
-
+        
     t_vendas = Table(table_data, colWidths=[250, 100, 150])
     t_vendas.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#16191e')),
@@ -300,6 +317,7 @@ def gerador_pdf_mensal(mes_ano, df_vendas, total_faturado, qtd_baterias):
         ('PADDING', (0,0), (-1,-1), 5),
     ]))
     story.append(t_vendas)
+    
     doc.build(story)
     buffer.seek(0)
     return buffer
@@ -461,7 +479,7 @@ st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
 if st.session_state["perfil"] == "LOGS":
     opcoes_menu = ["Auditoria & Logs"]
 elif st.session_state["perfil"] == "ADM":
-    opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia", "Editar Baterias", "Histórico", "Caixa Diário", "Painel ADM"]
+    opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia", "Editar Baterias", "Histórico", "Caixa Diário", "Relatório Mensal", "Painel ADM"]
 else:
     opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia"]
 
@@ -787,59 +805,120 @@ elif menu == "Caixa Diário" and st.session_state["perfil"] == "ADM":
             pdf_caixa = gerador_pdf_caixa(data_str, df_hoje, total_dia)
             st.download_button("📄 Baixar Relatório do Fechamento de Caixa (PDF)", data=pdf_caixa, file_name=f"fechamento_caixa_{data_str.replace('/', '_')}.pdf", mime="application/pdf", use_container_width=True)
 
-# --- ABA 8: RELATÓRIO MENSAL ---
+# --- ABA 7: RELATÓRIO MENSAL (NOVA) ---
 elif menu == "Relatório Mensal" and st.session_state["perfil"] == "ADM":
-    st.header("Relatório Mensal e Faturamento")
+    st.header("📊 Relatório Mensal e Faturamento")
     
-    col_m, col_a = st.columns(2)
-    meses = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
-    ano_atual = obter_agora_brasilia().year
+    res_todas = supabase.table("vendas").select("*").execute()
+    df_todas = pd.DataFrame(res_todas.data)
     
-    mes_sel = col_m.selectbox("Mês", meses, index=obter_agora_brasilia().month - 1)
-    ano_sel = col_a.selectbox("Ano", [str(ano_atual - 1), str(ano_atual), str(ano_atual + 1)], index=1)
-    
-    str_busca_data = f"/{mes_sel}/{ano_sel}"
-    res = supabase.table("vendas").select("*").like("data_hora", f"%{str_busca_data}%").execute()
-    df_mes = pd.DataFrame(res.data)
-    
-    if df_mes.empty:
-        st.warning(f"Nenhuma venda registada no período de {mes_sel}/{ano_sel}.")
+    if df_todas.empty:
+        st.warning("Nenhuma venda registrada no sistema ainda para gerar relatórios.")
     else:
-        total_fat = df_mes['valor_total'].sum()
-        qtd_bat = df_mes['quantidade'].sum()
-        ticket_medio = total_fat / len(df_mes) if len(df_mes) > 0 else 0
-        total_desc = df_mes['desconto'].sum()
+        df_todas['Data_Convertida'] = pd.to_datetime(df_todas['data_hora'], format="%d/%m/%Y %H:%M:%S", errors='coerce')
         
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Faturamento", f"R$ {total_fat:.2f}")
-        c2.metric("Baterias Vendidas", f"{qtd_bat} un")
-        c3.metric("Ticket Médio", f"R$ {ticket_medio:.2f}")
-        c4.metric("Descontos", f"R$ {total_desc:.2f}")
+        col_a, col_m = st.columns(2)
+        meses_nomes = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
+        
+        ano_atual = obter_agora_brasilia().year
+        mes_atual = obter_agora_brasilia().month
+        
+        anos_disponiveis = df_todas['Data_Convertida'].dt.year.dropna().astype(int).unique().tolist()
+        if ano_atual not in anos_disponiveis:
+            anos_disponiveis.append(ano_atual)
+        anos_disponiveis.sort()
+        
+        ano_sel = col_a.selectbox("Selecione o Ano", anos_disponiveis, index=anos_disponiveis.index(ano_atual))
+        opcoes_meses = [f"{k:02d} - {v}" for k, v in meses_nomes.items()]
+        mes_sel_str = col_m.selectbox("Selecione o Mês", opcoes_meses, index=mes_atual-1)
+        mes_sel = int(mes_sel_str.split(" ")[0])
         
         st.write("---")
-        st.subheader("Baterias Mais Vendidas")
-        df_agrupado = df_mes.groupby("produto_nome").agg(
-            Quantidade=("quantidade", "sum"), Faturamento=("valor_total", "sum")
-        ).reset_index().sort_values(by="Quantidade", ascending=False)
-        st.dataframe(df_agrupado, use_container_width=True, hide_index=True)
         
-        st.write("---")
-        colA, colB = st.columns(2)
-        with colA:
-            st.subheader("Por Forma de Pagamento")
-            df_pag = df_mes.groupby("forma_pagamento")["valor_total"].sum().reset_index()
-            st.dataframe(df_pag, use_container_width=True, hide_index=True)
-        with colB:
-            st.subheader("Por Vendedor")
-            df_vend = df_mes.groupby("vendedor")["valor_total"].sum().reset_index()
-            st.dataframe(df_vend, use_container_width=True, hide_index=True)
+        df_mes = df_todas[(df_todas['Data_Convertida'].dt.year == ano_sel) & (df_todas['Data_Convertida'].dt.month == mes_sel)]
+        
+        if df_mes.empty:
+            st.info(f"Nenhuma venda registrada em {meses_nomes[mes_sel]} de {ano_sel}.")
             
-        if REPORTLAB_DISPONIVEL:
+            st.subheader(f"📅 Evolução de Vendas no Ano ({ano_sel})")
+            df_ano = df_todas[df_todas['Data_Convertida'].dt.year == ano_sel]
+            if not df_ano.empty:
+                fat_ano = df_ano.groupby(df_ano['Data_Convertida'].dt.month)['valor_total'].sum().reset_index()
+                fat_ano['Mês'] = fat_ano['Data_Convertida'].map(meses_nomes)
+                fat_ano = fat_ano.set_index('Mês')
+                st.bar_chart(fat_ano['valor_total'], color="#28a745")
+                
+        else:
+            # 1. Indicadores Principais
+            st.subheader("1. Indicadores Principais")
+            total_fat = df_mes['valor_total'].sum()
+            qtd_bat = df_mes['quantidade'].sum()
+            ticket_medio = total_fat / len(df_mes)
+            total_desc = df_mes['desconto'].sum()
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Faturamento Bruto", f"R$ {total_fat:.2f}")
+            c2.metric("Baterias Vendidas", f"{qtd_bat} un")
+            c3.metric("Ticket Médio", f"R$ {ticket_medio:.2f}")
+            c4.metric("Descontos Concedidos", f"R$ {total_desc:.2f}")
+            
+            # 2. Relatório de Baterias (Top 3 e Tabela)
             st.write("---")
-            pdf_bytes = gerador_pdf_mensal(f"{mes_sel}/{ano_sel}", df_mes, total_fat, qtd_bat)
-            st.download_button("📄 Baixar Relatório Mensal (PDF)", data=pdf_bytes, file_name=f"relatorio_mensal_{mes_sel}_{ano_sel}.pdf", mime="application/pdf", use_container_width=True)
+            st.subheader("2. Baterias Mais Vendidas")
+            df_agrupado = df_mes.groupby("produto_nome").agg(
+                Quantidade=("quantidade", "sum"), 
+                Faturamento=("valor_total", "sum")
+            ).reset_index().sort_values(by="Quantidade", ascending=False)
+            
+            st.markdown("**🏆 Top 3 Mais Vendidas no Mês (Atenção ao Estoque):**")
+            top_3 = df_agrupado.head(3)
+            cols_top = st.columns(3)
+            for i, (idx, row) in enumerate(top_3.iterrows()):
+                if i < 3:
+                    cols_top[i].success(f"**{i+1}º {row['produto_nome']}**\n\nVendidas: {row['Quantidade']} un")
+            
+            st.write("")
+            st.dataframe(df_agrupado, use_container_width=True, hide_index=True)
+            
+            # 3. Desmembramento Financeiro
+            st.write("---")
+            st.subheader("3. Desmembramento Financeiro e Equipe")
+            colA, colB = st.columns(2)
+            with colA:
+                st.markdown("**Por Forma de Pagamento**")
+                df_pag = df_mes.groupby("forma_pagamento")["valor_total"].sum().reset_index()
+                df_pag.columns = ["Forma de Pagamento", "Total (R$)"]
+                st.dataframe(df_pag, use_container_width=True, hide_index=True)
+            with colB:
+                st.markdown("**Por Vendedor**")
+                df_vend = df_mes.groupby("vendedor")["valor_total"].sum().reset_index()
+                df_vend.columns = ["Vendedor", "Total (R$)"]
+                st.dataframe(df_vend, use_container_width=True, hide_index=True)
+                
+            # 4. Comparativo de Vendas no Ano
+            st.write("---")
+            st.subheader(f"4. Comparativo de Faturamento em {ano_sel}")
+            df_ano = df_todas[df_todas['Data_Convertida'].dt.year == ano_sel]
+            if not df_ano.empty:
+                fat_ano = df_ano.groupby(df_ano['Data_Convertida'].dt.month)['valor_total'].sum().reset_index()
+                fat_ano['Mês'] = fat_ano['Data_Convertida'].apply(lambda x: f"{x:02d} - {meses_nomes[x]}")
+                fat_ano = fat_ano.set_index('Mês')
+                st.bar_chart(fat_ano['valor_total'], color="#28a745")
+                
+            # 5. Exportação PDF
+            st.write("---")
+            st.subheader("5. Exportação")
+            if REPORTLAB_DISPONIVEL:
+                pdf_mensal = gerador_pdf_mensal(f"{meses_nomes[mes_sel]}/{ano_sel}", df_mes, total_fat, qtd_bat)
+                st.download_button(
+                    label=f"📄 Baixar Relatório de {meses_nomes[mes_sel]} (PDF)",
+                    data=pdf_mensal,
+                    file_name=f"relatorio_{meses_nomes[mes_sel]}_{ano_sel}.pdf".lower(),
+                    mime="application/pdf",
+                    use_container_width=True
+                )
 
-# --- ABA 7: PAINEL ADM ---
+# --- ABA 8: PAINEL ADM ---
 elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
     st.header("Cadastrar Nova Bateria")
     
