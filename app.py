@@ -117,8 +117,8 @@ def registrar_log(acao, detalhes, nivel="INFO"):
             "nivel": nivel
         }
         supabase.table("logs").insert(payload).execute()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Erro log: {e}")
 
 def obter_todas_categorias():
     try:
@@ -339,7 +339,7 @@ def modal_confirmar_edicao_bateria(id_sel, novos_dados):
         # Grava no log
         registrar_log(
             acao="Edição de Bateria",
-            detalhes=f"Atualizou bateria ID {id_sel} ({novos_dados['nome']}): Categoria='{novos_dados['categoria']}', Preço=R$ {novos_dados['preco']}, Estoque={novos_dados['quantidade']}",
+            detalhes=f"Atualizou bateria ID {id_sel} ({novos_dados['nome']}): Categoria='{novos_dados['categoria']}', Preço=R$ {novos_dados['preco']:.2f}, Estoque={novos_dados['quantidade']}",
             nivel="AVISO"
         )
         st.rerun()
@@ -801,7 +801,7 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
             )
             st.rerun()
 
-# --- ABA EXCLUSIVA DE LOGS (EXIBIÇÃO COMPACTA COM EXPANDER) ---
+# --- ABA EXCLUSIVA DE LOGS ---
 elif menu == "Auditoria & Logs" and st.session_state["perfil"] == "LOGS":
     st.header("📋 Registro de Auditoria & Logs do Sistema")
     st.info("Acesso exclusivo para auditoria de ações realizadas pelos usuários.")
@@ -824,5 +824,5 @@ elif menu == "Auditoria & Logs" and st.session_state["perfil"] == "LOGS":
                     st.write(f"**Ação Realizada:** {row.get('acao')}")
                     st.write(f"**Nível:** {row.get('nivel')}")
                     st.write(f"**Detalhes Completos:** {row.get('detalhes')}")
-    except Exception:
-        st.warning("A tabela de logs ainda não foi criada no Supabase. Crie a tabela 'logs' para visualizar o histórico.")
+    except Exception as e:
+        st.error(f"Erro ao carregar logs: {e}")
