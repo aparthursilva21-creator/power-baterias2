@@ -92,6 +92,7 @@ USUARIOS = {
     "sandro": {"senha": "963258", "perfil": "ADM", "nome": "Sandro"},
     "pedro": {"senha": "Pedro1234", "perfil": "Vendedor", "nome": "Pedro"},
     "wanderson": {"senha": "venda123", "perfil": "Vendedor", "nome": "Wanderson"},
+    "logs": {"senha": "Sandro123", "perfil": "LOGS", "nome": "Auditor Logs"},
 }
 
 CATEGORIAS_BASE = [
@@ -103,6 +104,21 @@ CATEGORIAS_BASE = [
     "72Ah EFB Start Stop",
     "90Ah"
 ]
+
+def registrar_log(acao, detalhes, nivel="INFO"):
+    try:
+        dt_agora = obter_agora_brasilia().strftime("%d/%m/%Y %H:%M:%S")
+        usr_nome = st.session_state.get("vendedor_nome", "Sistema")
+        payload = {
+            "data_hora": dt_agora,
+            "usuario": usr_nome,
+            "acao": acao,
+            "detalhes": detalhes,
+            "nivel": nivel
+        }
+        supabase.table("logs").insert(payload).execute()
+    except Exception as e:
+        print(f"Erro ao gravar log: {e}")
 
 def obter_todas_categorias():
     try:
@@ -258,6 +274,13 @@ def cancelar_venda(id_venda, produto_nome, quantidade):
         nova_qtd = prod.data[0]["quantidade"] + quantidade
         supabase.table("produtos").update({"quantidade": nova_qtd}).eq("nome", produto_nome).execute()
     supabase.table("vendas").delete().eq("id", id_venda).execute()
+    
+    # Grava no log
+    registrar_log(
+        acao="Cancelamento de Venda",
+        detalhes=f"Cancelou a Venda #{id_venda} ({produto_nome}). Retornou {quantidade} un ao estoque.",
+        nivel="PERIGO"
+    )
 
 # --- LOGIN ---
 if "logado" not in st.session_state:
@@ -267,7 +290,7 @@ if "logado" not in st.session_state:
     st.session_state["usuario_key"] = ""
 
 if not st.session_state["logado"]:
-    if os.path.exists("lgo.png"):
+    if os.path.exists("logo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align: center;'>HELIAR POWER BATERIAS</h1>", unsafe_allow_html=True)
@@ -312,6 +335,13 @@ def modal_confirmar_edicao_bateria(id_sel, novos_dados):
     if st.button("Sim, Confirmar Alteração", use_container_width=True):
         supabase.table("produtos").update(novos_dados).eq("id", id_sel).execute()
         st.toast("Bateria atualizada no Supabase!", icon="✅")
+        
+        # Grava no log
+        registrar_log(
+            acao="Edição de Bateria",
+            detalhes=f"Atualizou bateria ID {id_sel} ({novos_dados['nome']}): Categoria='{novos_dados['categoria']}', Preço=R$ {novos_dados['preco']}, Estoque={novos_dados['quantidade']}",
+            nivel="AVISO"
+        )
         st.rerun()
 
 @st.dialog("Confirmar Exclusão de Bateria 🔴")
@@ -320,6 +350,13 @@ def modal_confirmar_exclusao_bateria(id_sel, nome_bateria):
     if st.button("Sim, Excluir Bateria", use_container_width=True):
         supabase.table("produtos").delete().eq("id", id_sel).execute()
         st.toast("Bateria excluída!", icon="🗑")
+        
+        # Grava no log
+        registrar_log(
+            acao="Exclusão de Bateria",
+            detalhes=f"Excluiu permanentemente a bateria ID {id_sel} ({nome_bateria}).",
+            nivel="PERIGO"
+        )
         st.rerun()
 
 @st.dialog("Confirmar Cancelamento de Venda 🔴")
@@ -368,6 +405,13 @@ def modal_editar_venda(venda_dict):
         }
         supabase.table("vendas").update(payload).eq("id", venda_id).execute()
         st.toast("Venda atualizada com sucesso!", icon="✅")
+        
+        # Grava no log
+        registrar_log(
+            acao="Edição de Venda",
+            detalhes=f"Editou Venda #{venda_id}: Cliente='{e_cliente}', Valor=R$ {e_total:.2f}, Pgto={e_pag} ({e_parcelas})",
+            nivel="AVISO"
+        )
         st.rerun()
 
 # --- MENU LATERAL ---
@@ -378,9 +422,12 @@ else:
 
 st.sidebar.caption("DISK BATERIAS: (61) 99519-1090")
 
-opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia"]
-if st.session_state["perfil"] == "ADM":
-    opcoes_menu += ["Editar Baterias", "Histórico", "Caixa Diário", "Painel ADM"]
+if st.session_state["perfil"] == "LOGS":
+    opcoes_menu = ["Auditoria & Logs"]
+elif st.session_state["perfil"] == "ADM":
+    opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia", "Editar Baterias", "Histórico", "Caixa Diário", "Painel ADM"]
+else:
+    opcoes_menu = ["Nova Venda", "Estoque Organizado", "Consultar Garantia"]
 
 if "pagina_atual" not in st.session_state or st.session_state["pagina_atual"] not in opcoes_menu:
     st.session_state["pagina_atual"] = opcoes_menu[0]
@@ -745,4 +792,28 @@ elif menu == "Painel ADM" and st.session_state["perfil"] == "ADM":
             }
             supabase.table("produtos").insert(novo_prod).execute()
             st.success(f"Bateria '{f_nome}' cadastrada na categoria '{f_cat}' com sucesso!")
+            
+            # Grava no log
+            registrar_log(
+                acao="Cadastro de Nova Bateria",
+                detalhes=f"Cadastrou bateria '{f_nome}' na categoria '{f_cat}' (Preço: R$ {f_preco:.2f}, Estoque Inicial: {f_qtd})",
+                nivel="INFO"
+            )
             st.rerun()
+
+# --- ABA EXCLUSIVA DE LOGS ---
+elif menu == "Auditoria & Logs" and st.session_state["perfil"] == "LOGS":
+    st.header("📋 Registro de Auditoria & Logs do Sistema")
+    st.info("Acesso exclusivo para auditoria de ações realizadas pelos usuários.")
+    
+    try:
+        res_logs = supabase.table("logs").select("*").order("id", desc=True).execute()
+        df_logs = pd.DataFrame(res_logs.data)
+        
+        if df_logs.empty:
+            st.warning("Nenhum registro de log encontrado até o momento.")
+        else:
+            df_logs.columns = ['ID', 'Data/Hora', 'Usuário Responsável', 'Ação Realizada', 'Detalhes', 'Nível']
+            st.dataframe(df_logs[['ID', 'Data/Hora', 'Usuário Responsável', 'Ação Realizada', 'Detalhes', 'Nível']], use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Erro ao carregar logs do Supabase: {e}")
